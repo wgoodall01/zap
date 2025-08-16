@@ -12,4 +12,5 @@ const app = new cdk.App();
 
 new ZapStack(app, "ZapStackProd", {
   env,
+  domain: "zap.w01.dev",
 });

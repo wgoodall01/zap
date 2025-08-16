@@ -2,5 +2,9 @@
   "acknowledged-issue-numbers": [
     34892,
     34892
-  ]
+  ],
+  "hosted-zone:account=493650548257:domainName=zap.w01.dev:region=us-east-2": {
+    "Id": "/hostedzone/Z00584871OFAYJ6CAEKXP",
+    "Name": "zap.w01.dev."
+  }
 }
