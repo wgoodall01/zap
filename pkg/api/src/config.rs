@@ -24,4 +24,10 @@ impl Config {
 
         Ok(config)
     }
+
+    /// Parse config from a JSON value (useful for SecretsManager).
+    pub fn from_value(val: &serde_json::Value) -> Result<Config> {
+        serde_json::from_value(val.clone())
+            .with_context(|| format!("Failed to parse configuration from JSON. Input was: {}", val))
+    }
 }

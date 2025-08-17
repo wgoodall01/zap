@@ -6,6 +6,9 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as targets from "aws-cdk-lib/aws-route53-targets";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 
 export interface ZapStackProps extends cdk.StackProps {
@@ -15,9 +18,48 @@ export interface ZapStackProps extends cdk.StackProps {
 export class ZapStack extends cdk.Stack {
   public readonly webBucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
+  public readonly apiSecret: secretsmanager.Secret;
+  public readonly apiFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ZapStackProps) {
     super(scope, id, props);
+
+    // Create SecretsManager secret for API keys
+    this.apiSecret = new secretsmanager.Secret(this, "ApiKeys", {
+      secretName: "api_keys",
+      description: "Environment variables for the API Lambda function",
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: "placeholder",
+      },
+    });
+
+    // Create Lambda function for API
+    this.apiFunction = new lambda.Function(this, "ApiFunction", {
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      architecture: lambda.Architecture.ARM_64,
+      handler: "bootstrap",
+      code: lambda.Code.fromAsset("../api/target/lambda/lambda_server"),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment: {
+        ROCKET_ENV: "production",
+        API_SECRET_ARN: this.apiSecret.secretArn,
+      },
+    });
+
+    // Grant Lambda permission to read secrets
+    this.apiSecret.grantRead(this.apiFunction);
+
+    // Create Function URL with no authentication
+    const functionUrl = this.apiFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: [`https://${props.domain}`],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedHeaders: ["*"],
+      },
+    });
 
     // S3 bucket for webapp resources.
     this.webBucket = new s3.Bucket(this, "WebBucket", {
@@ -42,6 +84,17 @@ export class ZapStack extends cdk.Stack {
       defaultBehavior: {
         origin: new origins.S3Origin(this.webBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      },
+      additionalBehaviors: {
+        "/api/*": {
+          origin: new origins.FunctionUrlOrigin(functionUrl),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
       },
       domainNames: [props.domain, `www.${props.domain}`],
       certificate,

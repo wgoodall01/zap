@@ -8,9 +8,7 @@ pub fn healthcheck() -> Json<serde_json::Value> {
     Json(serde_json::json!({"status": "ok"}))
 }
 
-pub fn build_server() -> Rocket<Build> {
-    let config = Config::try_from_env().expect("Failed to load configuration");
-
+pub fn build_server(config: Config) -> Rocket<Build> {
     rocket::build()
         .manage(config)
         .mount("/", rocket::routes![healthcheck])
@@ -22,8 +20,4 @@ pub fn build_server() -> Rocket<Build> {
                 ..Default::default()
             }),
         )
-}
-
-pub async fn launch_server() -> Result<Rocket<rocket::Ignite>, rocket::Error> {
-    build_server().launch().await
 }
