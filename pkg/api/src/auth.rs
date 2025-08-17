@@ -4,7 +4,10 @@ use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
+use rocket_okapi::okapi::openapi3::{SecurityScheme, SecuritySchemeData};
 use rocket_okapi::okapi::schemars::JsonSchema;
+use rocket_okapi::okapi::Map;
+use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -73,5 +76,31 @@ impl<'r> FromRequest<'r> for User {
         }
 
         Outcome::Error((Status::Unauthorized, ()))
+    }
+}
+
+impl<'r> OpenApiFromRequest<'r> for User {
+    fn from_request_input(
+        _gen: &mut rocket_okapi::r#gen::OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
+        let security_scheme = SecurityScheme {
+            data: SecuritySchemeData::Http {
+                scheme: "bearer".to_owned(),
+                bearer_format: Some("Telegram raw_init_data (with signature)".to_owned()),
+            },
+            description: Some("Telegram MiniApp init-data token".to_owned()),
+            extensions: Map::new(),
+        };
+
+        let mut security_req = Map::new();
+        security_req.insert("bearer".to_owned(), vec![]);
+
+        Ok(RequestHeaderInput::Security(
+            "bearer".to_owned(),
+            security_scheme,
+            security_req,
+        ))
     }
 }
