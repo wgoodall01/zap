@@ -1,13 +1,19 @@
 use crate::api;
 use crate::config::Config;
-use rocket::{Build, Rocket};
+use rocket::{get, serde::json::Json, Build, Rocket};
 use rocket_okapi::swagger_ui::*;
+
+#[get("/healthcheck")]
+pub fn healthcheck() -> Json<serde_json::Value> {
+    Json(serde_json::json!({"status": "ok"}))
+}
 
 pub fn build_server() -> Rocket<Build> {
     let config = Config::try_from_env().expect("Failed to load configuration");
 
     rocket::build()
         .manage(config)
+        .mount("/", rocket::routes![healthcheck])
         .mount("/api/v1", api::get_api_routes())
         .mount(
             "/api/docs",

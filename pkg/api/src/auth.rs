@@ -1,12 +1,12 @@
 use crate::config::Config;
 use init_data_rs::validate_third_party;
-use rocket::State;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::{Deserialize, Serialize};
-use rocket_okapi::okapi::Map;
+use rocket::State;
 use rocket_okapi::okapi::openapi3::{SecurityScheme, SecuritySchemeData};
 use rocket_okapi::okapi::schemars::JsonSchema;
+use rocket_okapi::okapi::Map;
 use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -57,7 +57,9 @@ impl<'r> FromRequest<'r> for User {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join(" ")
+                .trim()
+                .to_owned();
 
             // Assert user ID is positive
             // (negative is a group chat, which we don't support as an auth principal)
