@@ -1,11 +1,11 @@
-use rocket::{Rocket, Build};
-use rocket_okapi::swagger_ui::*;
 use crate::api;
 use crate::config::Config;
+use rocket::{Build, Rocket};
+use rocket_okapi::swagger_ui::*;
 
 pub fn build_server() -> Rocket<Build> {
     let config = Config::try_from_env().expect("Failed to load configuration");
-    
+
     rocket::build()
         .manage(config)
         .mount("/api/v1", api::get_api_routes())

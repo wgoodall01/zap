@@ -1,12 +1,12 @@
 use crate::config::Config;
 use init_data_rs::validate_third_party;
+use rocket::State;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::{Deserialize, Serialize};
-use rocket::State;
+use rocket_okapi::okapi::Map;
 use rocket_okapi::okapi::openapi3::{SecurityScheme, SecuritySchemeData};
 use rocket_okapi::okapi::schemars::JsonSchema;
-use rocket_okapi::okapi::Map;
 use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
