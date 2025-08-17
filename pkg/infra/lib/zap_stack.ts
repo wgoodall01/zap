@@ -24,11 +24,16 @@ export class ZapStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Look up the hosted zone
+    const hostedZone = route53.HostedZone.fromLookup(this, "HostedZone", {
+      domainName: props.domain,
+    });
+
     // Create SSL certificate for the domain
     const certificate = new acm.Certificate(this, "Certificate", {
       domainName: props.domain,
       subjectAlternativeNames: [`www.${props.domain}`],
-      validation: acm.CertificateValidation.fromDns(),
+      validation: acm.CertificateValidation.fromDns(hostedZone),
     });
 
     // Create CloudFront distribution
@@ -49,17 +54,12 @@ export class ZapStack extends cdk.Stack {
       ],
     });
 
-    // Look up the hosted zone
-    const hostedZone = route53.HostedZone.fromLookup(this, "HostedZone", {
-      domainName: props.domain,
-    });
-
     // Create Route53 A records
     new route53.ARecord(this, "ApexRecord", {
       zone: hostedZone,
       recordName: props.domain,
       target: route53.RecordTarget.fromAlias(
-        new targets.CloudFrontTarget(this.distribution)
+        new targets.CloudFrontTarget(this.distribution),
       ),
     });
 
@@ -67,7 +67,7 @@ export class ZapStack extends cdk.Stack {
       zone: hostedZone,
       recordName: `www.${props.domain}`,
       target: route53.RecordTarget.fromAlias(
-        new targets.CloudFrontTarget(this.distribution)
+        new targets.CloudFrontTarget(this.distribution),
       ),
     });
 
