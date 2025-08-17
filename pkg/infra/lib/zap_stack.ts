@@ -29,11 +29,12 @@ export class ZapStack extends cdk.Stack {
       domainName: props.domain,
     });
 
-    // Create SSL certificate for the domain
-    const certificate = new acm.Certificate(this, "Certificate", {
+    // Create SSL certificate for the domain in us-east-1 (required for CloudFront)
+    const certificate = new acm.DnsValidatedCertificate(this, "Certificate", {
       domainName: props.domain,
       subjectAlternativeNames: [`www.${props.domain}`],
-      validation: acm.CertificateValidation.fromDns(hostedZone),
+      hostedZone,
+      region: "us-east-1",
     });
 
     // Create CloudFront distribution
