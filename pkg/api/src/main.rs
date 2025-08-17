@@ -1,95 +1,85 @@
-use rocket::form::FromForm;
 use rocket::{get, post, serde::json::Json};
 use rocket_okapi::okapi::schemars;
 use rocket_okapi::okapi::schemars::JsonSchema;
-use rocket_okapi::settings::UrlObject;
 use rocket_okapi::{openapi, openapi_get_routes, swagger_ui::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct User {
-    /// A unique user identifier.
     user_id: u64,
-    /// The current username of the user.
     username: String,
-    #[schemars(example = "example_email")]
     email: Option<String>,
 }
 
-fn example_email() -> &'static str {
-    "test@example.com"
+#[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct Device {
+    device_id: String,
+    name: String,
+    connected: bool,
 }
 
-/// # Get all users
+#[derive(Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct TriggerRequest {
+    device_id: String,
+    action: Action,
+    duration_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum Action {
+    Shock,
+    Beep,
+    Vibrate,
+}
+
+/// # Get current user
 ///
-/// Returns all users in the system.
-#[openapi(tag = "Users")]
-#[get("/user")]
-fn get_all_users() -> Json<Vec<User>> {
-    Json(vec![User {
-        user_id: 42,
-        username: "bob".to_owned(),
-        email: None,
-    }])
+/// Returns info about the current user.
+#[openapi(tag = "Auth")]
+#[get("/auth/me")]
+fn get_me() -> Json<User> {
+    Json(User {
+        user_id: 1,
+        username: "test_user".to_owned(),
+        email: Some("test@example.com".to_owned()),
+    })
 }
 
-/// # Get user
+/// # Trigger device action
 ///
-/// Returns a single user by ID.
-#[openapi(tag = "Users")]
-#[get("/user/<id>")]
-fn get_user(id: u64) -> Option<Json<User>> {
-    Some(Json(User {
-        user_id: id,
-        username: "bob".to_owned(),
-        email: None,
-    }))
+/// Triggers an action on a specified device.
+#[openapi(tag = "Devices")]
+#[post("/trigger", data = "<request>")]
+fn trigger_action(request: Json<TriggerRequest>) -> Json<&'static str> {
+    println!(
+        "Triggering {:?} on device {} for {}ms",
+        request.action, request.device_id, request.duration_ms
+    );
+    Json("Action triggered successfully")
 }
 
-/// # Get user by name
+/// # Get devices
 ///
-/// Returns a single user by username.
-#[openapi(tag = "Users")]
-#[get("/user_example?<user_id>&<name>&<email>")]
-fn get_user_by_name(user_id: u64, name: String, email: Option<String>) -> Option<Json<User>> {
-    Some(Json(User {
-        user_id,
-        username: name,
-        email,
-    }))
-}
-
-/// # Create user
-#[openapi(tag = "Users")]
-#[post("/user", data = "<user>")]
-fn create_user(user: Json<User>) -> Json<User> {
-    user
-}
-
-#[openapi(skip)]
-#[get("/hidden")]
-fn hidden() -> Json<&'static str> {
-    Json("Hidden from swagger!")
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, FromForm)]
-struct Post {
-    /// The unique identifier for the post.
-    post_id: u64,
-    /// The title of the post.
-    title: String,
-    /// A short summary of the post.
-    summary: Option<String>,
-}
-
-/// # Create post using query params
-///
-/// Returns the created post.
-#[openapi(tag = "Posts")]
-#[get("/post_by_query?<post..>")]
-fn create_post_by_query(post: Post) -> Option<Json<Post>> {
-    Some(Json(post))
+/// Returns a list of connected devices.
+#[openapi(tag = "Devices")]
+#[get("/devices")]
+fn get_devices() -> Json<Vec<Device>> {
+    Json(vec![
+        Device {
+            device_id: "device_001".to_owned(),
+            name: "Test Device 1".to_owned(),
+            connected: true,
+        },
+        Device {
+            device_id: "device_002".to_owned(),
+            name: "Test Device 2".to_owned(),
+            connected: false,
+        },
+    ])
 }
 
 #[rocket::main]
@@ -98,12 +88,9 @@ async fn main() {
         .mount(
             "/",
             openapi_get_routes![
-                get_all_users,
-                get_user,
-                get_user_by_name,
-                create_user,
-                hidden,
-                create_post_by_query,
+                get_me,
+                trigger_action,
+                get_devices,
             ],
         )
         .mount(
