@@ -20,6 +20,12 @@ export default defineConfig({
 
   server: {
     allowedHosts: ["localhost", "dynamic-evolved-magpie.ngrok-free.app"],
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: false,
+      },
+    },
   },
 
   // Find .env files in the project root.

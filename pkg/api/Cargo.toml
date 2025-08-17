@@ -7,3 +7,5 @@ edition = "2024"
 rocket = { version = "0.5.1", features = ["serde_json"] }
 rocket_okapi = { version = "0.9.0", features = ["swagger"] }
 serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+schemars = "0.8"

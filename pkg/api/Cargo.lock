@@ -32,7 +32,9 @@ version = "0.1.0"
 dependencies = [
  "rocket",
  "rocket_okapi",
+ "schemars",
  "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -1364,6 +1366,7 @@ dependencies = [
  "io-uring",
  "libc",
  "mio",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "slab",
