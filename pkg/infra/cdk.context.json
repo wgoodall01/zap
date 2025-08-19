@@ -6,5 +6,37 @@
   "hosted-zone:account=493650548257:domainName=zap.w01.dev:region=us-east-2": {
     "Id": "/hostedzone/Z00584871OFAYJ6CAEKXP",
     "Name": "zap.w01.dev."
+  },
+  "vpc-provider:account=493650548257:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-0f04b8146cb142166",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "493650548257",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0ae2d94f40b014b26",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "us-east-2a",
+            "routeTableId": "rtb-058e1b609347c28ab"
+          },
+          {
+            "subnetId": "subnet-051a08a01a70c52d4",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "us-east-2b",
+            "routeTableId": "rtb-058e1b609347c28ab"
+          },
+          {
+            "subnetId": "subnet-0cd95c62a0e1e8f57",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "us-east-2c",
+            "routeTableId": "rtb-058e1b609347c28ab"
+          }
+        ]
+      }
+    ]
   }
 }

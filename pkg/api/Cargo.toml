@@ -18,3 +18,4 @@ aws-sdk-secretsmanager = "1.0"
 aws-config = "1.0"
 lambda-web = { version = "0.2.1", features = ["rocket05"] }
 lambda_runtime = "0.14.3"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "migrate"] }

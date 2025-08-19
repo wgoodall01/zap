@@ -9,6 +9,9 @@ import * as targets from "aws-cdk-lib/aws-route53-targets";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as rds from "aws-cdk-lib/aws-rds";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import { RemovalPolicy, Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 export interface ZapStackProps extends cdk.StackProps {
@@ -19,10 +22,13 @@ export class ZapStack extends cdk.Stack {
   public readonly webBucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
   public readonly apiSecret: secretsmanager.Secret;
+  public readonly dbCluster: rds.DatabaseCluster;
   public readonly apiFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ZapStackProps) {
     super(scope, id, props);
+
+    const vpc = ec2.Vpc.fromLookup(this, "DefaultVpc", { isDefault: true });
 
     // Create SecretsManager secret for API keys
     this.apiSecret = new secretsmanager.Secret(this, "ApiKeys", {
@@ -33,6 +39,43 @@ export class ZapStack extends cdk.Stack {
         generateStringKey: "placeholder",
       },
     });
+
+    // Create Aurora Serverless v2 cluster
+    this.dbCluster = new rds.DatabaseCluster(this, "DbCluster", {
+      defaultDatabaseName: "app",
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_17_4,
+      }),
+
+      // Provision a single writer instance.
+      writer: rds.ClusterInstance.serverlessV2("ClusterInstance"),
+
+      // Put it in the public subnet (...not great, but I'm cheap)
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+
+      // Store credentials in a SecretsManager secret
+      credentials: rds.Credentials.fromGeneratedSecret("postgres"),
+
+      // Enable Aurora Serverless v2
+      serverlessV2MinCapacity: 0,
+      serverlessV2MaxCapacity: 1,
+      serverlessV2AutoPauseDuration: Duration.minutes(5),
+
+      // Encrypt storage.
+      storageEncrypted: true,
+
+      // Don't remove data.
+      deletionProtection: true,
+      removalPolicy: RemovalPolicy.SNAPSHOT,
+
+      enableDataApi: true,
+    });
+
+    // Allow inbound connections on PostgreSQL port from anywhere (public access)
+    this.dbCluster.connections.allowDefaultPortFromAnyIpv4(
+      "Allow PostgreSQL connections from anywhere",
+    );
 
     // Create Lambda function for API
     this.apiFunction = new lambda.Function(this, "ApiFunction", {
@@ -45,11 +88,13 @@ export class ZapStack extends cdk.Stack {
       environment: {
         ROCKET_ENV: "production",
         API_SECRET_ARN: this.apiSecret.secretArn,
+        DB_SECRET_ARN: this.dbCluster.secret!.secretArn,
       },
     });
 
     // Grant Lambda permission to read secrets
     this.apiSecret.grantRead(this.apiFunction);
+    this.dbCluster.secret!.grantRead(this.apiFunction);
 
     // Create Function URL with no authentication
     const functionUrl = this.apiFunction.addFunctionUrl({

@@ -8,6 +8,7 @@ use serde_with::{DisplayFromStr, serde_as};
 pub struct Config {
     #[serde_as(as = "DisplayFromStr")]
     pub tg_bot_id: i64,
+    pub database_url: String,
 }
 
 impl Config {
@@ -27,7 +28,11 @@ impl Config {
 
     /// Parse config from a JSON value (useful for SecretsManager).
     pub fn from_value(val: &serde_json::Value) -> Result<Config> {
-        serde_json::from_value(val.clone())
-            .with_context(|| format!("Failed to parse configuration from JSON. Input was: {}", val))
+        serde_json::from_value(val.clone()).with_context(|| {
+            format!(
+                "Failed to parse configuration from JSON. Input was: {}",
+                val
+            )
+        })
     }
 }

@@ -1,0 +1,2 @@
+# This directory contains SQLx migrations
+# Use `cargo install sqlx-cli` and `sqlx migrate add <name>` to create new migrations
