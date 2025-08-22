@@ -2,7 +2,6 @@ use crate::api;
 use crate::config::Config;
 use crate::database::{self, DbPool};
 use rocket::http::Status;
-use rocket::response::{Body, Responder, Response};
 use rocket::{Build, Rocket, State, get, serde::json::Json};
 use rocket_okapi::swagger_ui::*;
 
