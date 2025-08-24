@@ -13,6 +13,7 @@ import * as rds from "aws-cdk-lib/aws-rds";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { RemovalPolicy, Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import * as fs from "fs";
 
 export interface ZapStackProps extends cdk.StackProps {
   domain: string;
@@ -27,6 +28,7 @@ export class ZapStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ZapStackProps) {
     super(scope, id, props);
+    const webDistDir = __dirname + "/../../web/dist";
 
     const vpc = ec2.Vpc.fromLookup(this, "DefaultVpc", { isDefault: true });
 
@@ -124,11 +126,28 @@ export class ZapStack extends cdk.Stack {
       region: "us-east-1",
     });
 
+    // Create CloudFront function for SPA routing
+    const spaRoutingFunction = new cloudfront.Function(
+      this,
+      "SpaRoutingFunction",
+      {
+        code: cloudfront.FunctionCode.fromInline(
+          generateSpaRoutingFunctionCode(webDistDir),
+        ),
+      },
+    );
+
     // Create CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
         origin: new origins.S3Origin(this.webBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        functionAssociations: [
+          {
+            function: spaRoutingFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+        ],
       },
       additionalBehaviors: {
         "/api/*": {
@@ -144,13 +163,6 @@ export class ZapStack extends cdk.Stack {
       domainNames: [props.domain, `www.${props.domain}`],
       certificate,
       defaultRootObject: "index.html",
-      errorResponses: [
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-        },
-      ],
     });
 
     // Create Route53 A records
@@ -172,7 +184,7 @@ export class ZapStack extends cdk.Stack {
 
     // Create a BucketDeployment to deploy static files to the S3 bucket.
     new s3deploy.BucketDeployment(this, "WebBucketDeployment", {
-      sources: [s3deploy.Source.asset(__dirname + "/../../web/dist")],
+      sources: [s3deploy.Source.asset(webDistDir)],
       destinationBucket: this.webBucket,
       distribution: this.distribution,
       distributionPaths: ["/*"],
@@ -189,4 +201,51 @@ export class ZapStack extends cdk.Stack {
       description: "ARN of the database credentials secret",
     });
   }
+}
+
+function generateSpaRoutingFunctionCode(webappDistDir: string): string {
+  // We want to generate a list of URL prefixes which should ALWAYS be
+  // routed to S3, and NOT subject to the SPA index.html routing rules.
+  // 1. We'll list the webappDistDir
+  // 2. For files, we'll append the filaname.
+  // 3. For directories, we'll append the directory name with a trailing slash.
+  //
+  // Then, in the function, we'll prefix-check the request URI against
+  // this list, and if it matches any of them, we'll skip the index.html
+  // routing logic.
+
+  const alwaysS3Prefixes: string[] = [];
+  const items = fs.readdirSync(webappDistDir, { withFileTypes: true });
+  for (const item of items) {
+    if (item.isFile()) {
+      alwaysS3Prefixes.push(`/${item.name}`);
+    } else if (item.isDirectory()) {
+      alwaysS3Prefixes.push(`/${item.name}/`);
+    }
+  }
+
+  return `
+    var alwaysS3Prefixes = ${JSON.stringify(alwaysS3Prefixes)};
+
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      
+      // Don't redirect API routes
+      if (uri.startsWith('/api/')) {
+        return request;
+      }
+
+      // Don't redirect if the URI matches any of the always-S3 prefixes
+      for (var prefix in alwaysS3Prefixes) {
+        if (uri.startsWith(prefix)) {
+          return request;
+        }
+      }
+
+      // Otherwise, reroute to 'index.html'
+      request.uri = '/index.html';
+      return request;
+    }
+  `;
 }
