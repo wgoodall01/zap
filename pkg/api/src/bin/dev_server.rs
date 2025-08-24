@@ -12,6 +12,6 @@ async fn main() {
             Ok(_) => println!("Rocket shut down gracefully."),
             Err(err) => println!("Rocket had an error: {}", err),
         },
-        Err(err) => println!("Failed to build server: {}", err),
+        Err(err) => println!("Failed to build server: {:?}", err),
     }
 }

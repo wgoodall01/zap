@@ -1,4 +1,4 @@
-use crate::auth::User;
+use crate::telegram_auth::TgUser;
 use rocket::{get, serde::json::Json};
 use rocket_okapi::okapi::schemars::JsonSchema;
 use rocket_okapi::openapi;
@@ -14,7 +14,7 @@ pub struct Device {
 
 #[openapi(tag = "Devices")]
 #[get("/device")]
-pub fn get_devices(_user: User) -> Json<Vec<Device>> {
+pub fn get_devices(_user: TgUser) -> Json<Vec<Device>> {
     Json(vec![
         Device {
             device_id: "device_001".to_owned(),

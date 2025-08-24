@@ -11,7 +11,7 @@ use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct User {
+pub struct TgUser {
     pub user_id: u64,
     pub name: String,
     pub tg_username: String,
@@ -19,7 +19,7 @@ pub struct User {
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for User {
+impl<'r> FromRequest<'r> for TgUser {
     type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
@@ -68,8 +68,8 @@ impl<'r> FromRequest<'r> for User {
                 return Outcome::Error((Status::Unauthorized, ()));
             };
 
-            // Build the User
-            return Outcome::Success(User {
+            // Build the TgUser
+            return Outcome::Success(TgUser {
                 user_id: user_id.try_into().unwrap(),
                 name,
                 tg_username: user.username.unwrap_or_default(),
@@ -81,7 +81,7 @@ impl<'r> FromRequest<'r> for User {
     }
 }
 
-impl<'r> OpenApiFromRequest<'r> for User {
+impl<'r> OpenApiFromRequest<'r> for TgUser {
     fn from_request_input(
         _gen: &mut rocket_okapi::r#gen::OpenApiGenerator,
         _name: String,

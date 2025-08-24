@@ -93,7 +93,7 @@ dependencies = [
  "serde_with",
  "sqlx",
  "tokio",
- "uuid",
+ "uuid 1.18.0",
 ]
 
 [[package]]
@@ -251,7 +251,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "tracing",
- "uuid",
+ "uuid 1.18.0",
 ]
 
 [[package]]
@@ -2684,6 +2684,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "ubyte",
+ "uuid 1.18.0",
  "version_check",
  "yansi",
 ]
@@ -2730,6 +2731,7 @@ dependencies = [
  "time",
  "tokio",
  "uncased",
+ "uuid 1.18.0",
 ]
 
 [[package]]
@@ -2945,11 +2947,14 @@ version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
 dependencies = [
+ "chrono",
  "dyn-clone",
  "indexmap 1.9.3",
  "schemars_derive",
  "serde",
  "serde_json",
+ "uuid 0.8.2",
+ "uuid 1.18.0",
 ]
 
 [[package]]
@@ -3326,7 +3331,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
- "uuid",
+ "uuid 1.18.0",
  "webpki-roots 0.26.11",
 ]
 
@@ -3408,7 +3413,7 @@ dependencies = [
  "stringprep",
  "thiserror",
  "tracing",
- "uuid",
+ "uuid 1.18.0",
  "whoami",
 ]
 
@@ -3447,7 +3452,7 @@ dependencies = [
  "stringprep",
  "thiserror",
  "tracing",
- "uuid",
+ "uuid 1.18.0",
  "whoami",
 ]
 
@@ -3474,7 +3479,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
- "uuid",
+ "uuid 1.18.0",
 ]
 
 [[package]]
@@ -3991,6 +3996,12 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "uuid"

@@ -1,4 +1,4 @@
-use crate::auth::User;
+use crate::telegram_auth::TgUser;
 use rocket::{post, serde::json::Json};
 use rocket_okapi::okapi::schemars::JsonSchema;
 use rocket_okapi::openapi;
@@ -22,7 +22,7 @@ pub struct TriggerRequest {
 
 #[openapi(tag = "Devices")]
 #[post("/trigger", data = "<request>")]
-pub fn trigger_action(_user: User, request: Json<TriggerRequest>) -> Json<&'static str> {
+pub fn trigger_action(_user: TgUser, request: Json<TriggerRequest>) -> Json<&'static str> {
     println!(
         "Triggering {:?} on device {} for {}ms",
         request.action, request.device_id, request.duration_ms

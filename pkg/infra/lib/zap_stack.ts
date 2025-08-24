@@ -177,5 +177,16 @@ export class ZapStack extends cdk.Stack {
       distribution: this.distribution,
       distributionPaths: ["/*"],
     });
+
+    // Stack outputs
+    new cdk.CfnOutput(this, "ApiSecretArn", {
+      value: this.apiSecret.secretArn,
+      description: "ARN of the API keys secret",
+    });
+
+    new cdk.CfnOutput(this, "DbSecretArn", {
+      value: this.dbCluster.secret!.secretArn,
+      description: "ARN of the database credentials secret",
+    });
   }
 }

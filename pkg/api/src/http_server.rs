@@ -1,6 +1,6 @@
 use crate::api;
 use crate::config::Config;
-use crate::database::{self, DbPool};
+use crate::context::DbPool;
 use rocket::http::Status;
 use rocket::{Build, Rocket, State, get, serde::json::Json};
 use rocket_okapi::swagger_ui::*;
@@ -45,7 +45,7 @@ pub struct HealthcheckResponse {
 }
 
 pub async fn build_server(config: Config) -> anyhow::Result<Rocket<Build>> {
-    let db_pool = database::create_pool(&config.database_url).await?;
+    let db_pool = sqlx::PgPool::connect(&config.database_url).await?;
 
     Ok(rocket::build()
         .manage(config)

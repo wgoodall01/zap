@@ -2,13 +2,14 @@
 name = "api"
 version = "0.1.0"
 edition = "2024"
+default-run = "dev_server"
 
 [dependencies]
 rocket = { version = "0.5.1", features = ["serde_json"] }
-rocket_okapi = { version = "0.9.0", features = ["swagger"] }
+rocket_okapi = { version = "0.9.0", features = ["swagger", "uuid"] }
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
-schemars = "0.8"
+schemars = {version ="*", features=["uuid1", "chrono"]}
 init-data-rs = "0.1.3"
 dotenvy = "0.15.7"
 anyhow = { version = "1.0.99", features = ["backtrace"] }

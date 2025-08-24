@@ -14,7 +14,7 @@ cargo build -q
 
 # Run the app in the background as a job
 echo "--- Starting API server"
-ROCKET_PORT=9000 cargo -q run >/dev/null &
+ROCKET_PORT=9000 cargo run --quiet >/dev/null &
 
 # Poll for the JSON file every 50ms until it exists, max 10s
 # `GET localhost:9000/api/v1/openapi.json`
