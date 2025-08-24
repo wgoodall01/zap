@@ -4,14 +4,19 @@
 //! - a FooLogin represents a login method for a user from the Foo service.
 //!     - Each FooLogin is associated with a single User, but a User can have multiple FooLogins.
 
+use crate::config::Config;
 use crate::context::Context;
-use crate::telegram_auth;
 use anyhow::{Context as _, Result};
 use chrono::{DateTime, Utc};
+use rocket::request::{FromRequest, Outcome, Request};
+use rocket::State;
 use rocket_okapi::okapi::schemars::JsonSchema;
+
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+
+mod telegram;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +66,7 @@ impl User {
     }
 
     /// Gets the appropriate User for this LoginTelegram, if one doesn't exist already.
-    pub async fn from_telegram(tg_user: &telegram_auth::TgUser, ctx: &Context) -> Result<User> {
+    pub async fn from_telegram(tg_user: &telegram::TgUser, ctx: &Context) -> Result<User> {
         // Fast path: get an existing user by finding related LoginTg record.
         let existing_user: Option<User> = sqlx::query_as!(
             User,
@@ -126,5 +131,47 @@ impl User {
             .context("Failed to commit Telegram user registration transaction")?;
 
         Ok(user)
+    }
+}
+
+/// Authenticates an incoming request.
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for User {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        // Get the app config from Rocket state.
+        let _config = request
+            .guard::<&State<Config>>()
+            .await
+            .expect("Config not found in Rocket state");
+
+        // Get the database pool from Rocket state
+        let db_pool = request
+            .guard::<&State<sqlx::Pool<sqlx::Postgres>>>()
+            .await
+            .expect("Database pool not found in Rocket state");
+
+        // Create a system context for database access
+        let login_ctx = Context::new_system("User::from_request", (**db_pool).clone());
+
+        // Try to authenticate using Telegram auth
+        let tg_user = match telegram::TgUser::from_request(request).await {
+            Outcome::Success(user) => user,
+            Outcome::Error(_) | Outcome::Forward(_) => {
+                return Outcome::Error((rocket::http::Status::Unauthorized, ()))
+            }
+        };
+
+        // Lookup or create the user in the database
+        let user = match User::from_telegram(&tg_user, &login_ctx).await {
+            Ok(user) => user,
+            Err(e) => {
+                println!("Failed to lookup or create user: {:?}", e);
+                return Outcome::Error((rocket::http::Status::InternalServerError, ()));
+            }
+        };
+
+        Outcome::Success(user)
     }
 }

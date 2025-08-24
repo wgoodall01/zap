@@ -1,12 +1,13 @@
 use crate::api;
 use crate::config::Config;
-use crate::context::DbPool;
 use rocket::http::Status;
-use rocket::{Build, Rocket, State, get, serde::json::Json};
+use rocket::{get, serde::json::Json, Build, Rocket, State};
 use rocket_okapi::swagger_ui::*;
 
 #[get("/healthcheck")]
-pub async fn healthcheck(db: &State<DbPool>) -> (Status, Json<HealthcheckResponse>) {
+pub async fn healthcheck(
+    db: &State<sqlx::Pool<sqlx::Postgres>>,
+) -> (Status, Json<HealthcheckResponse>) {
     let response = HealthcheckResponse {
         db: sqlx::query_scalar::<_, String>("select now()::varchar")
             .fetch_one(db.inner())

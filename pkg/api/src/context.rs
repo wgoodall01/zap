@@ -1,4 +1,4 @@
-use crate::{telegram_auth::TgUser, user};
+use crate::auth;
 use futures::StreamExt;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::State;
@@ -7,13 +7,11 @@ use rocket_okapi::okapi::Map;
 use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres, Transaction};
+use sqlx::{Postgres, Transaction};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-pub type DbPool = Pool<Postgres>;
 
 /// An application context caries state about the invoking user, references to resources like a
 /// database connection pool, and other information used to process a request.
@@ -40,7 +38,7 @@ impl Context {
     }
 
     /// Create a new Context with the given invoker and database pool.
-    pub fn new_user(user: user::User, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
+    pub fn new_user(user: auth::User, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self {
             invoker: Invoker::User(user),
             db_pool,
@@ -180,39 +178,20 @@ impl<'r> FromRequest<'r> for Context {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         // Get the database pool from Rocket state
-        let db_pool = match request.guard::<&State<DbPool>>().await {
-            Outcome::Success(pool) => pool,
-            Outcome::Error(e) => {
-                println!("Failed to get database pool from Rocket state");
-                return Outcome::Error(e);
-            }
-            Outcome::Forward(f) => return Outcome::Forward(f),
-        };
+        let db_pool = request
+            .guard::<&State<sqlx::Pool<sqlx::Postgres>>>()
+            .await
+            .expect("Database pool not found in Rocket state");
 
-        // Try to authenticate using Telegram auth
-        let tg_user = match TgUser::from_request(request).await {
+        // Extract the User from the request.
+        let user = match request.guard::<auth::User>().await {
             Outcome::Success(user) => user,
-            Outcome::Error(e) => {
-                println!("Telegram authentication failed");
-                return Outcome::Error(e);
-            }
-            Outcome::Forward(f) => return Outcome::Forward(f),
+            Outcome::Error((status, _)) => return Outcome::Error((status, ())),
+            Outcome::Forward(_) => return Outcome::Error((rocket::http::Status::Unauthorized, ())),
         };
 
-        // Lookup or create the user in the database
-        let login_ctx = Context::new_system("telegram_auth", (**db_pool).clone());
-        let user = match user::User::from_telegram(&tg_user, &login_ctx).await {
-            Ok(user) => user,
-            Err(e) => {
-                println!("Failed to lookup or create user: {:?}", e);
-                return Outcome::Error((rocket::http::Status::InternalServerError, ()));
-            }
-        };
-
-        // Create the request context with the authenticated user
-        let request_ctx = Context::new_user(user, (**db_pool).clone());
-
-        Outcome::Success(request_ctx)
+        // Create the user context and return to the request handler.
+        Outcome::Success(Context::new_user(user, db_pool.inner().clone()))
     }
 }
 
@@ -245,7 +224,7 @@ impl<'r> OpenApiFromRequest<'r> for Context {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub enum Invoker {
     /// Represents an invocation by request of a user.
-    User(user::User),
+    User(auth::User),
 
     /// Represents a system-level invocation, such as a background job or an internal service call.
     /// The string used should be uniquely grep-able in the codebase.
