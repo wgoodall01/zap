@@ -19,6 +19,7 @@ username=$(echo "$db_secret" | jq -r '.username')
 password=$(echo "$db_secret" | jq -r '.password')
 dbname=$(echo "$db_secret" | jq -r '.dbname')
 export DATABASE_URL="postgresql://$username:$password@$host:$port/$dbname"
+echo "[+] Fetched DATABASE_URL for host $host"
 
 # Run `cargo sqlx migrate run` with the DATABASE_URL.
 exec cargo sqlx migrate run --source ./migrations "$@"
