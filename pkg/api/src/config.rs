@@ -9,6 +9,7 @@ pub struct Config {
     #[serde_as(as = "DisplayFromStr")]
     pub tg_bot_id: i64,
     pub database_url: String,
+    pub openshock_api_key: String,
 }
 
 impl Config {

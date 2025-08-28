@@ -1,30 +1,19 @@
+use crate::config::Config;
 use crate::context::Context;
-use rocket::{get, serde::json::Json};
-use rocket_okapi::okapi::schemars::JsonSchema;
+use crate::openshock::{DeviceWithShockers, OpenshockService};
+use rocket::{get, serde::json::Json, State};
 use rocket_okapi::openapi;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct Device {
-    pub device_id: String,
-    pub name: String,
-    pub connected: bool,
-}
 
 #[openapi(tag = "Devices")]
 #[get("/device")]
-pub fn get_devices(_ctx: Context) -> Json<Vec<Device>> {
-    Json(vec![
-        Device {
-            device_id: "device_001".to_owned(),
-            name: "Test Device 1".to_owned(),
-            connected: true,
-        },
-        Device {
-            device_id: "device_002".to_owned(),
-            name: "Test Device 2".to_owned(),
-            connected: false,
-        },
-    ])
+pub async fn get_devices(ctx: Context, config: &State<Config>) -> Json<Vec<DeviceWithShockers>> {
+    let openshock_service = OpenshockService::from_config(config);
+
+    match openshock_service.list_shockers(&ctx).await {
+        Ok(devices) => Json(devices),
+        Err(e) => {
+            eprintln!("Failed to fetch devices from OpenShock: {}", e);
+            Json(vec![])
+        }
+    }
 }
