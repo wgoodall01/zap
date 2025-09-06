@@ -1,4 +1,7 @@
-use crate::{context::Context, openshock::{Duration, Intensity}};
+use crate::{
+    context::Context,
+    openshock::{Duration, Intensity},
+};
 use anyhow::{Context as _, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -108,20 +111,21 @@ impl ActivityService {
     /// - The context doesn't contain a valid user
     pub async fn log(&self, ctx: &Context, activity: &Activity) -> Result<Uuid> {
         let activity_id = Uuid::now_v7();
-        
+
         // Get user_id from context
         let user_id = match &ctx.invoker {
             crate::context::Invoker::User(user) => user.id,
             crate::context::Invoker::System(_) => {
-                return Err(anyhow::anyhow!("Cannot log activity without a user context"));
+                return Err(anyhow::anyhow!(
+                    "Cannot log activity without a user context"
+                ));
             }
         };
 
         // Serialize the invoker and activity to JSON
-        let created_by = serde_json::to_value(&ctx.invoker)
-            .context("Failed to serialize invoker")?;
-        let action = serde_json::to_value(activity)
-            .context("Failed to serialize activity")?;
+        let created_by =
+            serde_json::to_value(&ctx.invoker).context("Failed to serialize invoker")?;
+        let action = serde_json::to_value(activity).context("Failed to serialize activity")?;
 
         sqlx::query!(
             r#"
@@ -167,7 +171,7 @@ impl ActivityService {
         let rows = sqlx::query_as!(
             ActivityRecord,
             r#"
-            SELECT id, occurred_at, user_id, created_by, action
+            select id, occurred_at, user_id, created_by, action
             FROM activity
             WHERE occurred_at >= $1
             ORDER BY user_id, occurred_at
@@ -179,7 +183,8 @@ impl ActivityService {
         .context("Failed to fetch activity records")?;
 
         // Group by user and count activity types
-        let mut user_counts: std::collections::HashMap<Uuid, UserActivityCount> = std::collections::HashMap::new();
+        let mut user_counts: std::collections::HashMap<Uuid, UserActivityCount> =
+            std::collections::HashMap::new();
 
         for row in rows {
             let activity: Activity = serde_json::from_value(row.action)
