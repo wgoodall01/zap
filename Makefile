@@ -4,7 +4,10 @@
 all: api web api_lambda
 
 .PHONY: gen
-gen: pkg/api/.sqlx pkg/api/target/openapi.json
+gen: \
+	pkg/api/.sqlx \
+	pkg/api/target/openapi.json \
+	pkg/web/src/api_client
 
 .PHONY: deploy
 deploy: api_lambda web
@@ -28,5 +31,9 @@ pkg/api/.sqlx:
 	cd pkg/api && cargo sqlx prepare
 
 .PHONY: web
-web: pkg/api/target/openapi.json
+web: pkg/api/src/api_client
 	cd pkg/web && pnpm build
+
+.PHONY: pkg/web/src/api_client
+pkg/web/src/api_client: pkg/api/target/openapi.json
+	cd pkg/web && pnpm gen
