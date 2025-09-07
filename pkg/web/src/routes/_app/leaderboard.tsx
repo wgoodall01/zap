@@ -16,7 +16,6 @@ function ZapPage() {
       <Heading>Leaderboard</Heading>
       <Card>pad</Card>
       <Card>pad</Card>
-      <input type="checkbox" switch="" />
       <Card>pad</Card>
       <Card>pad</Card>
       <Card>pad</Card>

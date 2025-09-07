@@ -35,14 +35,14 @@ export const ElectricBorder = ({
   const filterId = `turbulent-displace-${rawId}`;
 
   // Refs for component elements
-  const rootRef = useRef(null);
-  const svgRef = useRef(null);
-  const strokeRef = useRef(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const strokeRef = useRef<HTMLDivElement>(null);
 
   // Refs to cache query results for SVG filter elements
-  const dyAnimsRef = useRef([]);
-  const dxAnimsRef = useRef([]);
-  const displacementMapRef = useRef(null);
+  const dyAnimsRef = useRef<SVGAnimateElement[]>([]);
+  const dxAnimsRef = useRef<SVGAnimateElement[]>([]);
+  const displacementMapRef = useRef<SVGFEDisplacementMapElement | null>(null);
 
   // --- Animation Restart Logic ---
   // Memoized function to restart the SVG animations.

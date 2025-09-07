@@ -102,15 +102,31 @@ export const Lightning = ({
   intensity?: number;
   size?: number;
 } & React.HTMLAttributes<HTMLCanvasElement>) => {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   // --- Refs to hold persistent values (WebGL context, animation state, props) ---
-  const glRef = useRef(null);
-  const animationFrameRef = useRef(null);
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const propsRef = useRef({ hue, xOffset, speed, intensity, size });
-  const uniformLocationsRef = useRef({});
-  const programRef = useRef(null);
-  const bufferRef = useRef(null);
-  const shaderRefs = useRef([]);
+  const uniformLocationsRef = useRef<{
+    iResolution: WebGLUniformLocation | null;
+    iTime: WebGLUniformLocation | null;
+    uHue: WebGLUniformLocation | null;
+    uXOffset: WebGLUniformLocation | null;
+    uSpeed: WebGLUniformLocation | null;
+    uIntensity: WebGLUniformLocation | null;
+    uSize: WebGLUniformLocation | null;
+  }>({
+    iResolution: null,
+    iTime: null,
+    uHue: null,
+    uXOffset: null,
+    uSpeed: null,
+    uIntensity: null,
+    uSize: null,
+  });
+  const programRef = useRef<WebGLProgram | null>(null);
+  const bufferRef = useRef<WebGLBuffer | null>(null);
+  const shaderRefs = useRef<WebGLShader[]>([]);
 
   // --- Update props ref on every render ---
   // This ensures the render loop always has access to the latest props.
@@ -131,7 +147,7 @@ export const Lightning = ({
     glRef.current = gl;
 
     // --- WebGL Helper Functions ---
-    const compileShader = (source, type) => {
+    const compileShader = (source: string, type: number) => {
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
@@ -145,7 +161,7 @@ export const Lightning = ({
       return shader;
     };
 
-    const createProgram = (vertexShader, fragmentShader) => {
+    const createProgram = (vertexShader: WebGLShader, fragmentShader: WebGLShader) => {
       const program = gl.createProgram();
       if (!program) return null;
       gl.attachShader(program, vertexShader);
@@ -237,15 +253,20 @@ export const Lightning = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
       if (glRef.current) {
+        const gl = glRef.current;
         // Detach and delete shaders
         shaderRefs.current.forEach((shader) => {
           if (programRef.current) {
-            glRef.current.detachShader(programRef.current, shader);
+            gl.detachShader(programRef.current, shader);
           }
-          glRef.current.deleteShader(shader);
+          gl.deleteShader(shader);
         });
-        glRef.current.deleteProgram(programRef.current);
-        glRef.current.deleteBuffer(bufferRef.current);
+        if (programRef.current) {
+          gl.deleteProgram(programRef.current);
+        }
+        if (bufferRef.current) {
+          gl.deleteBuffer(bufferRef.current);
+        }
       }
     };
   }, []); // Empty dependency array ensures this runs only once on mount

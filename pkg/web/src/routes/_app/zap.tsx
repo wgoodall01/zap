@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Card, Text, Button, Flex } from "@radix-ui/themes";
+import { Button, Flex } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
 import { ElectricBorder } from "../../components/electric_border";
 import { LightningIcon } from "@phosphor-icons/react";
