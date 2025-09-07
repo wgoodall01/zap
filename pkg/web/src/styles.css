@@ -1,14 +1,85 @@
-
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+.dark,
+.dark-theme {
+  --yellow-1: #13140c;
+  --yellow-2: #19190e;
+  --yellow-3: #262710;
+  --yellow-4: #323411;
+  --yellow-5: #3e4012;
+  --yellow-6: #4c4e15;
+  --yellow-7: #5b5d1a;
+  --yellow-8: #6d701b;
+  --yellow-9: #c8cd1b;
+  --yellow-10: #bec200;
+  --yellow-11: #d9df3a;
+  --yellow-12: #eff4ad;
+
+  --yellow-a1: #00930c02;
+  --yellow-a2: #a7ee5507;
+  --yellow-a3: #dbfb3b16;
+  --yellow-a4: #e3fd3024;
+  --yellow-a5: #ebfe2c31;
+  --yellow-a6: #f1ff3040;
+  --yellow-a7: #f5ff3950;
+  --yellow-a8: #f3fe3265;
+  --yellow-a9: #f9ff1fc9;
+  --yellow-a10: #f8fe00be;
+  --yellow-a11: #f7fe41dd;
+  --yellow-a12: #f9feb4f4;
+
+  --yellow-contrast: #22230b;
+  --yellow-surface: #1d1f1080;
+  --yellow-indicator: #c8cd1b;
+  --yellow-track: #c8cd1b;
+}
+
+@supports (color: color(display-p3 1 1 1)) {
+  @media (color-gamut: p3) {
+    .dark,
+    .dark-theme {
+      --yellow-1: oklch(18.7% 0.0158 111.5);
+      --yellow-2: oklch(21% 0.0211 111.5);
+      --yellow-3: oklch(26.6% 0.0385 111.5);
+      --yellow-4: oklch(31.4% 0.0537 111.5);
+      --yellow-5: oklch(36% 0.0663 111.5);
+      --yellow-6: oklch(40.9% 0.0771 111.5);
+      --yellow-7: oklch(46.3% 0.0884 111.5);
+      --yellow-8: oklch(52.5% 0.1041 111.5);
+      --yellow-9: oklch(81.8% 0.1753 111.5);
+      --yellow-10: oklch(78.5% 0.1753 111.5);
+      --yellow-11: oklch(87.1% 0.1753 111.5);
+      --yellow-12: oklch(94.6% 0.0907 111.5);
+
+      --yellow-a1: color(display-p3 0 0.8588 0.051 / 0.005);
+      --yellow-a2: color(display-p3 0.6863 0.9765 0.3529 / 0.026);
+      --yellow-a3: color(display-p3 0.8667 1 0.3294 / 0.085);
+      --yellow-a4: color(display-p3 0.898 1 0.3059 / 0.14);
+      --yellow-a5: color(display-p3 0.9255 1 0.3176 / 0.191);
+      --yellow-a6: color(display-p3 0.9451 1 0.3333 / 0.25);
+      --yellow-a7: color(display-p3 0.9569 1 0.3647 / 0.314);
+      --yellow-a8: color(display-p3 0.9647 1 0.349 / 0.395);
+      --yellow-a9: color(display-p3 0.9804 1 0.3451 / 0.789);
+      --yellow-a10: color(display-p3 0.9843 1 0.3137 / 0.742);
+      --yellow-a11: color(display-p3 0.9765 0.9961 0.4039 / 0.865);
+      --yellow-a12: color(display-p3 0.9843 1 0.7412 / 0.954);
+
+      --yellow-contrast: #22230b;
+      --yellow-surface: color(display-p3 0.1098 0.1176 0.0627 / 0.5);
+      --yellow-indicator: oklch(81.8% 0.1753 111.5);
+      --yellow-track: oklch(81.8% 0.1753 111.5);
+    }
+  }
+}
+
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }

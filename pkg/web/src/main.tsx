@@ -2,10 +2,12 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import * as tg from "./telegram";
+import { Theme } from "@radix-ui/themes";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
+import "@radix-ui/themes/styles.css";
 import "./styles.css";
 import reportWebVitals from "./reportWebVitals.ts";
 
@@ -35,7 +37,9 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <Theme accentColor="yellow" radius="none" appearance="dark">
+        <RouterProvider router={router} />
+      </Theme>
     </StrictMode>,
   );
 }

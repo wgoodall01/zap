@@ -134,6 +134,9 @@ export class ZapStack extends cdk.Stack {
         code: cloudfront.FunctionCode.fromInline(
           generateSpaRoutingFunctionCode(webDistDir),
         ),
+
+        // Use the 2.0 runtime
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
       },
     );
 
@@ -225,25 +228,29 @@ function generateSpaRoutingFunctionCode(webappDistDir: string): string {
   }
 
   return `
-    var alwaysS3Prefixes = ${JSON.stringify(alwaysS3Prefixes)};
+    const alwaysS3Prefixes = ${JSON.stringify(alwaysS3Prefixes)};
 
     function handler(event) {
-      var request = event.request;
-      var uri = request.uri;
+      const request = event.request;
+      const uri = request.uri;
       
       // Don't redirect API routes
       if (uri.startsWith('/api/')) {
+        console.log("api route: " + JSON.stringify({uri, prefix}));
         return request;
       }
 
       // Don't redirect if the URI matches any of the always-S3 prefixes
-      for (var prefix in alwaysS3Prefixes) {
+      for (let i = 0; i < alwaysS3Prefixes.length; i++) {
+        const prefix = alwaysS3Prefixes[i];
         if (uri.startsWith(prefix)) {
+          console.log("asset match: ", JSON.stringify({uri, prefix}));
           return request;
         }
       }
 
       // Otherwise, reroute to 'index.html'
+      console.log("spa redirect: " + JSON.stringify({uri}));
       request.uri = '/index.html';
       return request;
     }

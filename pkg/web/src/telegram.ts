@@ -12,6 +12,9 @@ export function setup() {
 
   // Initialize Telegram SDK
   telegramInit();
+
+  // Initialize init-data
+  initData.restore();
 }
 
 /**
@@ -19,7 +22,7 @@ export function setup() {
  *
  * If we're running in the mock environment, returns the mock init data.
  */
-export function getRawInitData() {
+export function getRawInitData(): string | null {
   if (isMockEnv) {
     const mockInitData = process.env.TG_MOCK_INIT_DATA;
     if (!mockInitData) {
@@ -27,8 +30,8 @@ export function getRawInitData() {
         "We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.",
       );
     }
-    return process.env.TG_MOCK_INIT_DATA;
+    return process.env.TG_MOCK_INIT_DATA ?? null;
   }
 
-  return initData.raw();
+  return initData.raw() ?? null;
 }

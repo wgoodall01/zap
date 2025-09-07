@@ -1,3 +1,6 @@
 packages:
-  - 'pkg/infra'
-  - 'pkg/web'
+  - pkg/infra
+  - pkg/web
+
+onlyBuiltDependencies:
+  - esbuild

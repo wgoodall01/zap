@@ -1,10 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { redirect, createFileRoute } from "@tanstack/react-router";
 import logo from "../logo.svg";
-import "../App.css";
 import * as tg from "@/telegram";
 
 export const Route = createFileRoute("/")({
   component: App,
+  beforeLoad: () => {
+    throw redirect({ to: "/zap" });
+  },
 });
 
 function App() {

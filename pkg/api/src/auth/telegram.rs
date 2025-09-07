@@ -68,48 +68,61 @@ impl<'r> FromRequest<'r> for TgUser {
             return Outcome::Error((Status::Unauthorized, ()));
         };
 
-        // Check the Telegram init-data header.
-        if let Some(raw_init_data) = header.strip_prefix("Bearer ") {
-            // Extract the init data
-            let id = match validate_third_party(raw_init_data, config.tg_bot_id, None) {
-                Ok(tgu) => tgu,
-                Err(e) => {
-                    println!("Failed to validate Telegram init data: {e}");
-                    return Outcome::Error((Status::Unauthorized, ()));
-                }
-            };
-
-            // Extract the user (must be supplied)
-            let Some(user) = id.user else {
-                println!("User not found in init data");
+        // Strip the `Bearer ` prefix.
+        let bearer_token = match header.strip_prefix("Bearer ") {
+            Some(token) => token,
+            None => {
+                println!("Invalid Authorization header format: no 'Bearer' prefix");
                 return Outcome::Error((Status::Unauthorized, ()));
-            };
+            }
+        };
 
-            // Format the full name
-            let name = [Some(user.first_name), user.last_name]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(" ")
-                .trim()
-                .to_owned();
-
-            // Assert user ID is positive
-            // (negative is a group chat, which we don't support as an auth principal)
-            let Some(user_id) = user.id.checked_abs() else {
-                println!("Invalid user ID (negative integer) in init data");
+        // Strip the `tg_init_data:` prefix.
+        let raw_init_data = match bearer_token.strip_prefix("tg_init_data:") {
+            Some(data) => data,
+            None => {
+                println!("Invalid Authorization header format: no 'tg_init_data:' prefix");
                 return Outcome::Error((Status::Unauthorized, ()));
-            };
+            }
+        };
 
-            // Build the TgUser
-            return Outcome::Success(TgUser {
-                user_id: user_id.try_into().unwrap(),
-                name,
-                tg_username: user.username.unwrap_or_default(),
-                photo_url: user.photo_url,
-            });
-        }
+        // Extract the init data
+        let id = match validate_third_party(raw_init_data, config.tg_bot_id, None) {
+            Ok(tgu) => tgu,
+            Err(e) => {
+                println!("Failed to validate Telegram init data: {e}");
+                return Outcome::Error((Status::Unauthorized, ()));
+            }
+        };
 
-        Outcome::Error((Status::Unauthorized, ()))
+        // Extract the user (must be supplied)
+        let Some(user) = id.user else {
+            println!("User not found in init data");
+            return Outcome::Error((Status::Unauthorized, ()));
+        };
+
+        // Format the full name
+        let name = [Some(user.first_name), user.last_name]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim()
+            .to_owned();
+
+        // Assert user ID is positive
+        // (negative is a group chat, which we don't support as an auth principal)
+        let Some(user_id) = user.id.checked_abs() else {
+            println!("Invalid user ID (negative integer) in init data");
+            return Outcome::Error((Status::Unauthorized, ()));
+        };
+
+        // Build the TgUser
+        return Outcome::Success(TgUser {
+            user_id: user_id.try_into().unwrap(),
+            name,
+            tg_username: user.username.unwrap_or_default(),
+            photo_url: user.photo_url,
+        });
     }
 }
