@@ -1,4 +1,10 @@
-import { init as telegramInit, initData } from "@telegram-apps/sdk";
+import {
+  init as telegramInit,
+  initData,
+  hapticFeedbackImpactOccurred,
+  hapticFeedbackNotificationOccurred,
+  hapticFeedbackSelectionChanged,
+} from "@telegram-apps/sdk";
 import { isTMA } from "@telegram-apps/bridge";
 
 // Check whether we're running in a mock environment (i.e. a non-Telegram-hosted browser context)
@@ -30,8 +36,46 @@ export function getRawInitData(): string | null {
         "We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.",
       );
     }
+
+    console.log("tg mock: returning mock init data:", mockInitData);
     return process.env.TG_MOCK_INIT_DATA ?? null;
   }
 
   return initData.raw() ?? null;
+}
+
+export type TgHaptic =
+  | { type: "impact"; style: "light" | "medium" | "heavy" | "rigid" | "soft" }
+  | { type: "notification"; style: "success" | "warning" | "error" }
+  | { type: "selection" };
+
+export function playHapticFeedback(h: TgHaptic) {
+  if (isMockEnv) {
+    console.log("tg mock: haptic feedback:", h);
+    return;
+  }
+
+  if (h.type === "impact") {
+    if (hapticFeedbackImpactOccurred.isAvailable()) {
+      hapticFeedbackImpactOccurred(h.style);
+    }
+    return;
+  }
+
+  if (h.type === "notification") {
+    if (hapticFeedbackNotificationOccurred.isAvailable()) {
+      hapticFeedbackNotificationOccurred(h.style);
+    }
+    return;
+  }
+
+  if (h.type === "selection") {
+    if (hapticFeedbackSelectionChanged.isAvailable()) {
+      hapticFeedbackSelectionChanged();
+    }
+    return;
+  }
+
+  const _exhaustiveCheck: never = h;
+  throw new Error(`Unhandled haptic feedback type: ${_exhaustiveCheck}`);
 }

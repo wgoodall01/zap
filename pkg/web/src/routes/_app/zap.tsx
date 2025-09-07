@@ -4,6 +4,7 @@ import { Card, Text, Button, Flex } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
 import { ElectricBorder } from "../../components/electric_border";
 import { LightningIcon } from "@phosphor-icons/react";
+import { type TgHaptic, playHapticFeedback } from "../../telegram";
 
 export const Route = createFileRoute("/_app/zap")({
   component: ZapPage,
@@ -31,6 +32,8 @@ function ZapPage() {
   const [firing, setFiring] = useState(false);
   useEffect(() => {
     if (firing) {
+      playZapHaptics();
+
       const timeout = setTimeout(() => {
         setFiring(false);
       }, effectDuration());
@@ -84,4 +87,20 @@ function ZapPage() {
       </Flex>
     </Flex>
   );
+}
+
+async function playZapHaptics() {
+  const sequence: Array<number | TgHaptic> = [
+    { type: "notification", style: "warning" },
+    100,
+    { type: "notification", style: "error" },
+  ];
+
+  for (const item of sequence) {
+    if (typeof item === "number") {
+      await new Promise((resolve) => setTimeout(resolve, item));
+    } else {
+      playHapticFeedback(item);
+    }
+  }
 }
