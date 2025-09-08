@@ -4,7 +4,7 @@ use crate::openshock::{DeviceWithShockers, OpenshockService};
 use rocket::{get, serde::json::Json, State};
 use rocket_okapi::openapi;
 
-#[openapi(tag = "Devices")]
+#[openapi(tag = "Devices", operation_id = "devices:list")]
 #[get("/device")]
 pub async fn get_devices(ctx: Context, config: &State<Config>) -> Json<Vec<DeviceWithShockers>> {
     let openshock_service = OpenshockService::from_config(config);

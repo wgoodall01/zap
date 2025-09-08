@@ -36,9 +36,12 @@ export function getRawInitData(): string | null {
         "We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.",
       );
     }
-
-    console.log("tg mock: returning mock init data:", mockInitData);
     return process.env.TG_MOCK_INIT_DATA ?? null;
+  }
+
+  // If we're running outside of a mini-app, we don't have init data.
+  if (!isTMA()) {
+    return null;
   }
 
   return initData.raw() ?? null;
@@ -49,6 +52,10 @@ export type TgHaptic =
   | { type: "notification"; style: "success" | "warning" | "error" }
   | { type: "selection" };
 
+/**
+ * Play haptic feedback on the user's device.
+ * If we can't, this is a no-op.
+ */
 export function playHapticFeedback(h: TgHaptic) {
   if (isMockEnv) {
     console.log("tg mock: haptic feedback:", h);

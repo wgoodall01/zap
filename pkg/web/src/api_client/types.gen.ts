@@ -21,9 +21,9 @@ export type TriggerResponse = {
 
 export type TriggerRequest = {
     /**
-     * The UUID of the shocker device to control
+     * The UUIDs of the shocker devices to control
      */
-    shockerId: string;
+    shockerIds: Array<string>;
     /**
      * The action to perform with its parameters
      */
@@ -136,48 +136,48 @@ export type WarmupResponses = {
     200: unknown;
 };
 
-export type AuthGetMeData = {
+export type AuthMeData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/auth/me';
 };
 
-export type AuthGetMeResponses = {
+export type AuthMeResponses = {
     200: Invoker;
 };
 
-export type AuthGetMeResponse = AuthGetMeResponses[keyof AuthGetMeResponses];
+export type AuthMeResponse = AuthMeResponses[keyof AuthMeResponses];
 
-export type TriggerTriggerActionData = {
+export type DevicesTriggerData = {
     body: TriggerRequest;
     path?: never;
     query?: never;
     url: '/trigger';
 };
 
-export type TriggerTriggerActionErrors = {
+export type DevicesTriggerErrors = {
     default: unknown;
 };
 
-export type TriggerTriggerActionResponses = {
+export type DevicesTriggerResponses = {
     200: TriggerResponse;
 };
 
-export type TriggerTriggerActionResponse = TriggerTriggerActionResponses[keyof TriggerTriggerActionResponses];
+export type DevicesTriggerResponse = DevicesTriggerResponses[keyof DevicesTriggerResponses];
 
-export type DeviceGetDevicesData = {
+export type DevicesListData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/device';
 };
 
-export type DeviceGetDevicesResponses = {
+export type DevicesListResponses = {
     200: Array<DeviceWithShockers>;
 };
 
-export type DeviceGetDevicesResponse = DeviceGetDevicesResponses[keyof DeviceGetDevicesResponses];
+export type DevicesListResponse = DevicesListResponses[keyof DevicesListResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}/api/v1` | (string & {});

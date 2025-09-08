@@ -1,10 +1,14 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { Box, Flex, Button, Card, Text } from "@radix-ui/themes";
+import { Box, Flex, Button, Card, Text, Spinner } from "@radix-ui/themes";
+import { Suspense } from "react";
 import { Link } from "../link";
 import { LightningIcon, RankingIcon } from "@phosphor-icons/react";
+import { checkAuthBeforeLoad } from "../auth";
+import { ApiProvider } from "../api";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
+  beforeLoad: checkAuthBeforeLoad,
 });
 
 function AppLayout() {
@@ -16,7 +20,21 @@ function AppLayout() {
           paddingBottom: "5.5rem",
         }}
       >
-        <Outlet />
+        <ApiProvider>
+          <Suspense
+            fallback={
+              <Flex
+                justify="center"
+                align="center"
+                style={{ flex: 1 }}
+              >
+                <Spinner size="3" />
+              </Flex>
+            }
+          >
+            <Outlet />
+          </Suspense>
+        </ApiProvider>
       </Flex>
       <AppBar />
     </>

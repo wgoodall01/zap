@@ -28,7 +28,7 @@ export async function checkAuthBeforeLoad() {
   if (!auth) {
     throw redirect({
       to: "/login",
-      search: { redirect: location.href },
+      search: { redirect: location.pathname + location.search + location.hash },
     });
   }
 }

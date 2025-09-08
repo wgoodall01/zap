@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button, Flex } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
 import { ElectricBorder } from "../../components/electric_border";
 import { LightningIcon } from "@phosphor-icons/react";
 import { type TgHaptic, playHapticFeedback } from "../../telegram";
+import { $api } from "../../api";
+import { mutationDevicesTrigger } from "../../api_client/@tanstack/react-query.gen";
+import type { TriggerRequest } from "../../api_client/types.gen";
 
 export const Route = createFileRoute("/_app/zap")({
   component: ZapPage,
@@ -41,6 +44,40 @@ function ZapPage() {
     }
   }, [firing]);
 
+  // Network request to trigger shock
+  const shockMutation = $api.useMutation(mutationDevicesTrigger, {
+    onSuccess: () => {
+      console.log("Shock triggered successfully!");
+    },
+    onError: (error) => {
+      console.error("Failed to trigger shock:", error);
+    },
+  });
+
+  const onShock = useCallback(async () => {
+    // Start the haptics immediately.
+    playZapHaptics();
+
+    // Trigger the shock effect
+    setFiring(true);
+
+    // Send the shock request to the API
+    // TODO: Get actual device/shocker ID from user's devices
+    const triggerRequest: TriggerRequest = {
+      shockerId: "placeholder-shocker-id", // This should come from the user's selected device
+      action: {
+        Shock: {
+          intensity: 50, // 50% intensity
+          duration: 1000, // 1 second
+        },
+      },
+    };
+
+    shockMutation.mutate({
+      body: triggerRequest,
+    });
+  }, [shockMutation]);
+
   return (
     <Flex style={{ flex: 1 }} direction="column">
       <Lightning
@@ -68,7 +105,8 @@ function ZapPage() {
           backgroundGlow={true}
         >
           <Button
-            onClick={() => setFiring(true)}
+            onClick={onShock}
+            disabled={shockMutation.isPending}
             size="4"
             variant="soft"
             style={{

@@ -29,8 +29,8 @@ pub enum Action {
 #[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TriggerRequest {
-    /// The UUID of the shocker device to control
-    pub shocker_id: Uuid,
+    /// The UUIDs of the shocker devices to control
+    pub shocker_ids: Vec<Uuid>,
     /// The action to perform with its parameters
     pub action: Action,
 }
@@ -42,7 +42,7 @@ pub struct TriggerResponse {
     pub message: String,
 }
 
-#[openapi(tag = "Devices")]
+#[openapi(tag = "Devices", operation_id = "devices:trigger")]
 #[post("/trigger", data = "<request>")]
 pub async fn trigger_action(
     ctx: Context,
@@ -98,17 +98,21 @@ pub async fn trigger_action(
         ),
     };
 
-    // Create the control message
-    let control_msg = ControlMsg {
-        id: request.shocker_id,
-        control_type,
-        intensity,
-        duration,
-        exclusive: Some(true),
-    };
+    // Create control messages for all shockers
+    let control_msgs: Vec<ControlMsg> = request
+        .shocker_ids
+        .iter()
+        .map(|&shocker_id| ControlMsg {
+            id: shocker_id,
+            control_type: control_type.clone(),
+            intensity,
+            duration,
+            exclusive: Some(true),
+        })
+        .collect();
 
     // Send the control command
-    if let Err(e) = openshock_service.control(&ctx, &[control_msg]).await {
+    if let Err(e) = openshock_service.control(&ctx, &control_msgs).await {
         eprintln!("Failed to send control command: {}", e);
         return Ok(Json(TriggerResponse {
             success: false,
@@ -125,8 +129,9 @@ pub async fn trigger_action(
     Ok(Json(TriggerResponse {
         success: true,
         message: format!(
-            "Successfully triggered {:?} on shocker {}",
-            request.action, request.shocker_id
+            "Successfully triggered {:?} on {} shocker(s)",
+            request.action,
+            request.shocker_ids.len()
         ),
     }))
 }
