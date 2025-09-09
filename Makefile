@@ -31,7 +31,7 @@ pkg/api/.sqlx:
 	cd pkg/api && cargo sqlx prepare
 
 .PHONY: web
-web: pkg/api/src/api_client
+web: pkg/web/src/api_client
 	cd pkg/web && pnpm build
 
 .PHONY: pkg/web/src/api_client
