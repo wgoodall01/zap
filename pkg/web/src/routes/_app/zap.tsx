@@ -12,12 +12,14 @@ import {
   Card,
 } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
-import { ElectricBorder } from "../../components/electric_border";
+import { RadialLayout } from "../../components/radial_layout";
 import {
   LightningIcon,
   GearIcon,
   Vibrate,
   SpeakerHigh,
+  Pause,
+  PlugsConnected,
 } from "@phosphor-icons/react";
 import { type TgHaptic, playHapticFeedback } from "../../telegram";
 import { $api } from "../../api";
@@ -75,7 +77,8 @@ function ZapPage() {
 
   // Event handler: trigger shock
   const onShock = useCallback(async () => {
-    if (firing) return; // Prevent multiple triggers
+    if (shockMutation.isPending) return; // Prevent concurrent triggers
+    if (firing) return; // Prevent too-frequent triggers
 
     // Start the haptics immediately.
     playZapHaptics();
@@ -95,12 +98,49 @@ function ZapPage() {
         action: {
           Shock: {
             intensity: 50, // 50% intensity
-            duration: 1000, // 1 second
+            duration: 1000,
           },
         },
       },
     });
   }, [firing, shockMutation]);
+
+  const onVibrate = useCallback(() => {
+    if (shockMutation.isPending) return; // Prevent concurrent triggers
+    playHapticFeedback({ type: "notification", style: "success" });
+
+    shockMutation.mutate({
+      body: {
+        shockerIds: Array.from(selectedShockers),
+        action: { Vibrate: { duration: 1000, intensity: 100 } },
+      },
+    });
+  }, [shockMutation]);
+
+  // Pair a shocker by sending a beep signal to it.
+  const onPair = useCallback(
+    (shockerId: string) => {
+      if (shockMutation.isPending) return; // Prevent concurrent triggers
+      shockMutation.mutate({
+        body: {
+          shockerIds: [shockerId],
+          action: { Vibrate: { duration: 300, intensity: 10 } },
+        },
+      });
+    },
+    [shockMutation],
+  );
+
+  const onBeep = useCallback(() => {
+    if (shockMutation.isPending) return; // Prevent concurrent triggers
+    playHapticFeedback({ type: "notification", style: "success" });
+    shockMutation.mutate({
+      body: {
+        shockerIds: Array.from(selectedShockers),
+        action: { Beep: { duration: 400, intensity: 100 } },
+      },
+    });
+  }, [shockMutation]);
 
   return (
     <Flex style={{ flex: 1 }} direction="column">
@@ -120,42 +160,29 @@ function ZapPage() {
         size={0.7}
       />
       <Flex align="center" mx="auto" my="auto">
-        {selectedShockers.size === 0 ? (
-          <Card style={{ maxWidth: 300, textAlign: "center" }}>
-            <Text size="3" mb="2">
-              No shockers enabled.
-            </Text>
-            <Button variant="soft" size="2" onClick={() => setModalOpen(true)}>
-              <GearIcon />
-              Open Settings
-            </Button>
-          </Card>
+        {selectedShockers.size > 0 ? (
+          <ButtonCluster
+            onShock={onShock}
+            onVibrate={onVibrate}
+            onSound={onBeep}
+            firing={firing}
+          />
         ) : (
-          <ElectricBorder
-            style={{ borderRadius: "100%" }}
-            speed={3}
-            chaos={0.7}
-            thickness={5}
-            borderGlow={true}
-            backgroundGlow={true}
-          >
-            <Button
-              onClick={onShock}
-              size="4"
-              variant="soft"
-              style={{
-                fontSize: "7rem",
-                width: "15rem",
-                height: "15rem",
-                appearance: "none",
-                boxShadow: "var(--shadow-5)",
-                borderRadius: "100%",
-                backdropFilter: "blur(15px)",
-              }}
-            >
-              <LightningIcon weight={firing ? "fill" : "light"} />
-            </Button>
-          </ElectricBorder>
+          <Card style={{ width: 250, textAlign: "center" }}>
+            <Flex direction="column" m="3">
+              <Text size="3" mb="4">
+                No shocker channels selected. Open settings and turn one on.
+              </Text>
+              <Button
+                variant="soft"
+                size="2"
+                onClick={() => setModalOpen(true)}
+              >
+                <GearIcon />
+                Open Settings
+              </Button>
+            </Flex>
+          </Card>
         )}
       </Flex>
 
@@ -171,6 +198,7 @@ function ZapPage() {
           onChangeEnabled={(shockerIds) =>
             setSelectedShockers(new Set(shockerIds))
           }
+          onPair={onPair}
           isOpen={modalOpen}
           onOpenChange={setModalOpen}
         />
@@ -179,12 +207,81 @@ function ZapPage() {
   );
 }
 
-interface ShockersDialogProps {
-  devices: DeviceWithShockers[];
-  enabledShockers: string[];
-  onChangeEnabled: (shockerIds: string[]) => void;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+/** The central button control cluster. */
+function ButtonCluster({
+  onShock,
+  onVibrate,
+  onSound,
+  firing,
+}: {
+  onShock: () => void;
+  onVibrate: () => void;
+  onSound: () => void;
+  firing: boolean;
+}) {
+  const BUTTON_GAP_ANGLE = 0.23;
+
+  function SatelliteButton({
+    onClick,
+    disabled,
+    children,
+  }: {
+    onClick: () => void;
+    disabled: boolean;
+    children: React.ReactNode;
+  }) {
+    return (
+      <Button
+        size="3"
+        variant="soft"
+        disabled={disabled}
+        style={{
+          borderRadius: "100%",
+          height: "3.5rem",
+          width: "3.5rem",
+        }}
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    );
+  }
+
+  return (
+    <RadialLayout.Container r="8rem" gap="24px">
+      <RadialLayout.Centered>
+        <Button
+          onClick={onShock}
+          size="4"
+          variant="soft"
+          style={{
+            fontSize: "7rem",
+            width: "15rem",
+            height: "15rem",
+            appearance: "none",
+            borderRadius: "100%",
+            backdropFilter: "blur(10px)",
+            border: "5px solid var(--accent-9)",
+            boxShadow: ["inset", ""]
+              .map((setting) => `${setting} 0 0 20px -6px var(--accent-9)`)
+              .join(", "),
+          }}
+        >
+          <LightningIcon weight={firing ? "fill" : "light"} />
+        </Button>
+      </RadialLayout.Centered>
+      <RadialLayout.Around theta={Math.PI / 4 + BUTTON_GAP_ANGLE}>
+        <SatelliteButton onClick={onVibrate} disabled={firing}>
+          <Vibrate size={24} />
+        </SatelliteButton>
+      </RadialLayout.Around>
+      <RadialLayout.Around theta={Math.PI / 4 - BUTTON_GAP_ANGLE}>
+        <SatelliteButton onClick={onSound} disabled={firing}>
+          <SpeakerHigh size={24} />
+        </SatelliteButton>
+      </RadialLayout.Around>
+    </RadialLayout.Container>
+  );
 }
 
 function ShockersDialog({
@@ -193,7 +290,15 @@ function ShockersDialog({
   onChangeEnabled,
   isOpen,
   onOpenChange,
-}: ShockersDialogProps) {
+  onPair,
+}: {
+  devices: DeviceWithShockers[];
+  enabledShockers: string[];
+  onChangeEnabled: (shockerIds: string[]) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPair: (shockerId: string) => void;
+}) {
   const enabledSet = new Set(enabledShockers);
 
   return (
@@ -201,13 +306,13 @@ function ShockersDialog({
       <Dialog.Trigger>
         <Button variant="soft" size="3">
           <GearIcon />
-          Shockers <Badge size="2">{enabledShockers.length}</Badge>
+          Channels <Badge size="2">{enabledShockers.length}</Badge>
         </Button>
       </Dialog.Trigger>
-      <Dialog.Content style={{ maxWidth: 450 }}>
-        <Dialog.Title>Shockers</Dialog.Title>
+      <Dialog.Content>
+        <Dialog.Title>Channels</Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          Choose which shockers to activate when you press the zap button.
+          Choose which radio channels to activate when you press the zap button.
         </Dialog.Description>
 
         {devices.length === 0 ? (
@@ -249,8 +354,25 @@ function ShockersDialog({
                         color={shocker.isPaused ? "gray" : undefined}
                       >
                         {shocker.name}
-                        {shocker.isPaused && " (Paused)"}
                       </Text>
+                      <Flex ml="auto">
+                        {shocker.isPaused && (
+                          <Badge size="2" variant="outline">
+                            <Pause />
+                            Paused
+                          </Badge>
+                        )}
+                        {!shocker.isPaused && (
+                          <Button
+                            variant="soft"
+                            size="2"
+                            onClick={() => onPair(shocker.id)}
+                          >
+                            <PlugsConnected />
+                            Connect
+                          </Button>
+                        )}
+                      </Flex>
                     </Flex>
                   ))}
                 </Flex>
