@@ -1,10 +1,11 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { Box, Flex, Button, Card, Text, Spinner } from "@radix-ui/themes";
-import { Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { Link } from "../link";
 import { LightningIcon, RankingIcon } from "@phosphor-icons/react";
 import { checkAuthBeforeLoad } from "../auth";
 import { ApiProvider } from "../api";
+import * as tg from "../telegram";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  useEffect(() => tg.maximize(), []);
   return (
     <>
       <Flex
@@ -23,11 +25,7 @@ function AppLayout() {
         <ApiProvider>
           <Suspense
             fallback={
-              <Flex
-                justify="center"
-                align="center"
-                style={{ flex: 1 }}
-              >
+              <Flex justify="center" align="center" style={{ flex: 1 }}>
                 <Spinner size="3" />
               </Flex>
             }

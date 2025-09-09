@@ -7,8 +7,6 @@ import {
   Badge,
   Switch,
   Text,
-  Box,
-  ScrollArea,
   Card,
 } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
@@ -27,11 +25,7 @@ import {
   mutationDevicesTrigger,
   queryDevicesList,
 } from "../../api_client/@tanstack/react-query.gen";
-import type {
-  TriggerRequest,
-  DeviceWithShockers,
-  Shocker,
-} from "../../api_client/types.gen";
+import type { DeviceWithShockers } from "../../api_client/types.gen";
 
 export const Route = createFileRoute("/_app/zap")({
   component: ZapPage,

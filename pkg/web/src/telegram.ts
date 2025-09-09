@@ -4,6 +4,7 @@ import {
   hapticFeedbackImpactOccurred,
   hapticFeedbackNotificationOccurred,
   hapticFeedbackSelectionChanged,
+  viewport,
 } from "@telegram-apps/sdk";
 import { isTMA } from "@telegram-apps/bridge";
 
@@ -19,7 +20,7 @@ export function setup() {
   // Initialize Telegram SDK
   telegramInit();
 
-  // Initialize init-data
+  // Mount components
   initData.restore();
 }
 
@@ -85,4 +86,11 @@ export function playHapticFeedback(h: TgHaptic) {
 
   const _exhaustiveCheck: never = h;
   throw new Error(`Unhandled haptic feedback type: ${_exhaustiveCheck}`);
+}
+
+/** Expand the mini-app to full screen, if possible. */
+export function maximize() {
+  if (viewport.expand.isAvailable()) {
+    viewport.expand();
+  }
 }
