@@ -1,10 +1,11 @@
+use rocket::{get, State};
+use rocket_okapi::openapi;
+use rocket_okapi::openapi_get_routes;
+
+pub mod activity;
 pub mod auth;
 pub mod device;
 pub mod trigger;
-use rocket::{get, State};
-use rocket_okapi::openapi;
-
-use rocket_okapi::openapi_get_routes;
 
 pub fn get_api_routes() -> Vec<rocket::Route> {
     openapi_get_routes![
@@ -12,6 +13,7 @@ pub fn get_api_routes() -> Vec<rocket::Route> {
         auth::get_me,
         trigger::trigger_action,
         device::get_devices,
+        activity::leaderboard,
     ]
 }
 

@@ -3,17 +3,21 @@ use crate::{
     openshock::{Duration, Intensity},
 };
 use anyhow::{Context as _, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::collections::BTreeMap;
+use strum::EnumDiscriminants;
 use uuid::Uuid;
 
 /// Represents different types of activities that can be logged in the system.
 ///
 /// Each variant corresponds to an OpenShock control action that can be performed
 /// on devices, with the relevant parameters for that action type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", content = "params")]
+#[derive(Debug, Clone, Serialize, Deserialize, EnumDiscriminants)]
+#[strum_discriminants(name(ActivityType))]
+#[strum_discriminants(derive(PartialOrd, Ord, Serialize, Deserialize))]
 pub enum Activity {
     /// Electrical shock delivered to device
     Shock {
@@ -40,43 +44,14 @@ pub enum Activity {
     Stop,
 }
 
-/// Represents a logged activity record from the database.
-///
-/// Contains all the metadata about when and by whom an activity was performed,
-/// along with the activity details themselves.
-#[derive(Debug, Clone, FromRow)]
-pub struct ActivityRecord {
-    /// Unique identifier for this activity record
-    pub id: Uuid,
-    /// When the activity occurred
-    pub occurred_at: DateTime<Utc>,
-    /// Which user the activity was performed for/by
-    pub user_id: Uuid,
-    /// Who/what initiated this activity (serialized Invoker)
-    pub created_by: serde_json::Value,
-    /// The activity that was performed (serialized Activity)
-    pub action: serde_json::Value,
-}
-
-/// Result structure for user activity counts over a time period.
-///
-/// Provides counts for each type of activity that a user has performed,
-/// allowing for analysis of usage patterns and activity levels.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// Activity counts.
+#[derive(Debug, Clone, FromRow, Serialize, JsonSchema)]
 pub struct UserActivityCount {
-    /// The user this count applies to
     pub user_id: Uuid,
-    /// Number of shock activities
-    pub shock_count: i64,
-    /// Number of vibrate activities
-    pub vibrate_count: i64,
-    /// Number of beep activities
-    pub beep_count: i64,
-    /// Number of stop activities
-    pub stop_count: i64,
-    /// Total activity count across all types
-    pub total_count: i64,
+    #[sqlx(json)]
+    pub counts: BTreeMap<ActivityType, u64>,
+    #[sqlx(try_from = "i64")]
+    pub total_actions: u64,
 }
 
 /// Service for logging and querying user activities.
@@ -114,8 +89,8 @@ impl ActivityService {
 
         // Get user_id from context
         let user_id = match &ctx.invoker {
-            crate::context::Invoker::User(user) => user.id,
-            crate::context::Invoker::System(_) => {
+            crate::context::Invoker::User { id } => id,
+            crate::context::Invoker::System { .. } => {
                 return Err(anyhow::anyhow!(
                     "Cannot log activity without a user context"
                 ));
@@ -129,8 +104,8 @@ impl ActivityService {
 
         sqlx::query!(
             r#"
-            INSERT INTO activity (id, user_id, created_by, action)
-            VALUES ($1, $2, $3, $4)
+            insert into activity (id, user_id, created_by, action)
+            values ($1, $2, $3, $4)
             "#,
             activity_id,
             user_id,
@@ -163,54 +138,45 @@ impl ActivityService {
     pub async fn count_by_user(
         &self,
         ctx: &Context,
-        reachback: chrono::Duration,
+        reachback: chrono::TimeDelta,
+        top_n: u32,
     ) -> Result<Vec<UserActivityCount>> {
         let cutoff_time = Utc::now() - reachback;
 
         // Query all activities within the time window
-        let rows = sqlx::query_as!(
-            ActivityRecord,
+        let results: Vec<UserActivityCount> = sqlx::query_as(
             r#"
-            select id, occurred_at, user_id, created_by, action
-            FROM activity
-            WHERE occurred_at >= $1
-            ORDER BY user_id, occurred_at
+            with
+
+            -- Get all activity over the time period described.
+            log as (
+                select
+                    (created_by->'User'->>'id')::uuid as user_id,
+                    k as action,
+                    count(*) as count
+                from activity, jsonb_object_keys(action) as k
+                where true
+                    and occurred_at > $1
+                group by 1, 2
+            )
+
+            -- Aggregate to `{ [activity]: count }` per user, map to struct with column names.
+            select
+                user_id as "user_id",
+                jsonb_object_agg(action, count::int) as "counts",
+                sum(count)::bigint as "total_actions"
+            from log
+            group by user_id
+            order by "total_actions" desc
+            limit $2
+            ;
             "#,
-            cutoff_time
         )
+        .bind(cutoff_time)
+        .bind(top_n as i64)
         .fetch_all(ctx)
         .await
         .context("Failed to fetch activity records")?;
-
-        // Group by user and count activity types
-        let mut user_counts: std::collections::HashMap<Uuid, UserActivityCount> =
-            std::collections::HashMap::new();
-
-        for row in rows {
-            let activity: Activity = serde_json::from_value(row.action)
-                .context("Failed to deserialize activity from database")?;
-
-            let count = user_counts.entry(row.user_id).or_insert(UserActivityCount {
-                user_id: row.user_id,
-                shock_count: 0,
-                vibrate_count: 0,
-                beep_count: 0,
-                stop_count: 0,
-                total_count: 0,
-            });
-
-            match activity {
-                Activity::Shock { .. } => count.shock_count += 1,
-                Activity::Vibrate { .. } => count.vibrate_count += 1,
-                Activity::Beep { .. } => count.beep_count += 1,
-                Activity::Stop => count.stop_count += 1,
-            }
-            count.total_count += 1;
-        }
-
-        // Convert to vector and sort by total count (descending)
-        let mut results: Vec<UserActivityCount> = user_counts.into_values().collect();
-        results.sort_by(|a, b| b.total_count.cmp(&a.total_count));
 
         Ok(results)
     }

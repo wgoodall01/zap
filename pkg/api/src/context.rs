@@ -12,6 +12,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use uuid::Uuid;
 
 /// An application context caries state about the invoking user, references to resources like a
 /// database connection pool, and other information used to process a request.
@@ -29,18 +30,18 @@ pub struct Context {
 
 impl Context {
     /// Create a new Context with a named System invoker.
-    pub fn new_system(system_id: &str, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
+    pub fn new_system(system_id: &'static str, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self {
-            invoker: Invoker::System(system_id.to_string()),
+            invoker: Invoker::from_system(system_id),
             db_pool,
             txn: Arc::new(Mutex::new(None)),
         }
     }
 
     /// Create a new Context with the given invoker and database pool.
-    pub fn new_user(user: auth::User, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
+    pub fn new_user(user: &auth::User, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self {
-            invoker: Invoker::User(user),
+            invoker: Invoker::from_user(&user),
             db_pool,
             txn: Arc::new(Mutex::new(None)),
         }
@@ -191,7 +192,7 @@ impl<'r> FromRequest<'r> for Context {
         };
 
         // Create the user context and return to the request handler.
-        Outcome::Success(Context::new_user(user, db_pool.inner().clone()))
+        Outcome::Success(Context::new_user(&user, db_pool.inner().clone()))
     }
 }
 
@@ -224,9 +225,28 @@ impl<'r> OpenApiFromRequest<'r> for Context {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub enum Invoker {
     /// Represents an invocation by request of a user.
-    User(auth::User),
+    User { id: Uuid },
 
     /// Represents a system-level invocation, such as a background job or an internal service call.
     /// The string used should be uniquely grep-able in the codebase.
-    System(String),
+    System { tag: String },
+}
+
+impl Invoker {
+    /// Create an Invoker from a User.
+    pub fn from_user(user: &auth::User) -> Self {
+        Invoker::User { id: user.id }
+    }
+
+    /// Create an Invoker from a user ID.
+    pub fn from_user_id(id: Uuid) -> Self {
+        Invoker::User { id }
+    }
+
+    /// Create an Invoker from a system tag.
+    pub fn from_system(tag: &'static str) -> Self {
+        Invoker::System {
+            tag: tag.to_string(),
+        }
+    }
 }

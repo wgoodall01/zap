@@ -15,42 +15,6 @@ pub struct TgUser {
     pub photo_url: Option<String>,
 }
 
-impl TgUser {
-    pub fn from_authorization_header(header: &str, bot_id: i64) -> Option<Self> {
-        // Check the Telegram init-data header.
-        if let Some(raw_init_data) = header.strip_prefix("Bearer ") {
-            // Extract the init data
-            let id = validate_third_party(raw_init_data, bot_id, None).ok()?;
-
-            // Extract the user (must be supplied)
-            let user = id.user?;
-
-            // Format the full name
-            let name = [Some(user.first_name), user.last_name]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(" ")
-                .trim()
-                .to_owned();
-
-            // Assert user ID is positive
-            // (negative is a group chat, which we don't support as an auth principal)
-            let user_id = user.id.checked_abs()?;
-
-            // Build the TgUser
-            return Some(TgUser {
-                user_id: user_id.try_into().unwrap(),
-                name,
-                tg_username: user.username.unwrap_or_default(),
-                photo_url: user.photo_url,
-            });
-        }
-
-        None
-    }
-}
-
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for TgUser {
     type Error = ();
