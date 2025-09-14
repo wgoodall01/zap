@@ -242,7 +242,7 @@ function ButtonCluster({
   }
 
   return (
-    <RadialLayout.Container r="8rem" gap="24px">
+    <RadialLayout.Container r="8rem" gap="2.5rem">
       <RadialLayout.Centered>
         <Button
           onClick={onShock}

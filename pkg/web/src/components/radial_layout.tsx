@@ -12,6 +12,7 @@ interface CenteredProps {
 
 interface AroundProps {
   theta: number;
+  orient?: boolean;
   children: React.ReactNode;
 }
 
@@ -24,11 +25,7 @@ const Container: React.FC<ContainerProps> = ({ r, gap, children }) => {
     "--radial-gap": gap,
   } as React.CSSProperties;
 
-  return (
-    <div style={containerStyle}>
-      {children}
-    </div>
-  );
+  return <div style={containerStyle}>{children}</div>;
 };
 
 const Centered: React.FC<CenteredProps> = ({ children }) => {
@@ -38,31 +35,27 @@ const Centered: React.FC<CenteredProps> = ({ children }) => {
     left: 0,
     width: "100%",
     height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   };
 
-  return (
-    <div style={centeredStyle}>
-      {children}
-    </div>
-  );
+  return <div style={centeredStyle}>{children}</div>;
 };
 
-const Around: React.FC<AroundProps> = ({ theta, children }) => {
+const Around: React.FC<AroundProps> = ({ theta, children, orient = false }) => {
   const aroundStyle: React.CSSProperties = {
     position: "absolute",
     top: "50%",
     left: "50%",
     "--angle": `${theta}rad`,
     "--radius": `calc(var(--radial-radius) + var(--radial-gap))`,
-    translate: "calc(cos(var(--angle)) * var(--radius)) calc(sin(var(--angle)) * var(--radius))",
-    transform: "translate(-50%, -50%)",
+    translate:
+      "calc(cos(var(--angle)) * var(--radius)) calc(sin(var(--angle)) * var(--radius))",
+    transform: `translate(-50%, -50%) rotate(${orient ? theta + Math.PI / 2 : 0}rad)`,
   } as React.CSSProperties;
 
-  return (
-    <div style={aroundStyle}>
-      {children}
-    </div>
-  );
+  return <div style={aroundStyle}>{children}</div>;
 };
 
 export const RadialLayout = {
