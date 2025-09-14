@@ -10,6 +10,14 @@ export type Invoker = {
     };
 };
 
+export type User = {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    name: string;
+    photoUrl?: string | null;
+};
+
 export type TriggerResponse = {
     success: boolean;
     message: string;
@@ -118,18 +126,18 @@ export type Shocker = {
 };
 
 export type Leaderboard = {
-    leaders: Array<UserActivityCount>;
+    leaders: Array<UserActivityWithDetails>;
 };
 
 /**
- * Activity counts.
+ * API response struct for leaderboard with full user details.
  */
-export type UserActivityCount = {
-    user_id: string;
+export type UserActivityWithDetails = {
+    user: User;
     counts: {
         [key: string]: number;
     };
-    total_actions: number;
+    totalActions: number;
 };
 
 export type WarmupData = {
@@ -159,6 +167,25 @@ export type AuthMeResponses = {
 };
 
 export type AuthMeResponse = AuthMeResponses[keyof AuthMeResponses];
+
+export type AuthGetUserData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type AuthGetUserErrors = {
+    default: unknown;
+};
+
+export type AuthGetUserResponses = {
+    200: User;
+};
+
+export type AuthGetUserResponse = AuthGetUserResponses[keyof AuthGetUserResponses];
 
 export type DevicesTriggerData = {
     body: TriggerRequest;

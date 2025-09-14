@@ -175,3 +175,39 @@ impl<'r> FromRequest<'r> for User {
         Outcome::Success(user)
     }
 }
+
+/// Service for user-related operations.
+#[derive(Debug, Clone)]
+pub struct UserService;
+
+impl UserService {
+    /// Creates a new UserService instance.
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Gets a user by their UUID.
+    ///
+    /// # Arguments
+    /// * `ctx` - Application context for database access
+    /// * `id` - The UUID of the user to retrieve
+    ///
+    /// # Returns
+    /// The User if found, or an error if not found or database operation fails.
+    pub async fn get(&self, ctx: &Context, id: Uuid) -> Result<User> {
+        let user = sqlx::query_as!(
+            User,
+            r#"
+            select id, created_at, updated_at, name, photo_url
+            from "user"
+            where id = $1
+            "#,
+            id
+        )
+        .fetch_one(ctx)
+        .await
+        .context("Failed to fetch user")?;
+
+        Ok(user)
+    }
+}

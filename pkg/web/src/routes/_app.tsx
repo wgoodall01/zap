@@ -19,6 +19,7 @@ function AppLayout() {
       <Flex
         style={{
           minHeight: "100dvh",
+          minWidth: "0", // Allow Flex children to shrink horizontally
           paddingBottom: "5.5rem",
         }}
       >
