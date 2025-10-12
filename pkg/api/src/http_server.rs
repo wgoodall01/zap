@@ -46,7 +46,13 @@ pub struct HealthcheckResponse {
 }
 
 pub async fn build_server(config: Config) -> anyhow::Result<Rocket<Build>> {
-    let db_pool = sqlx::PgPool::connect(&config.database_url).await?;
+    // Use connect_lazy to avoid blocking Lambda init on Aurora wake-up
+    // Set min_connections=1 to optimistically establish a connection in the background
+    // This wakes up Aurora without blocking the initial request
+    let db_pool = sqlx::postgres::PgPoolOptions::new()
+        .min_connections(1)
+        .max_connections(4)
+        .connect_lazy(&config.database_url)?;
 
     Ok(rocket::build()
         .manage(config)

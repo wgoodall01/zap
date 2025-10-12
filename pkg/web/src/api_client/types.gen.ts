@@ -237,6 +237,23 @@ export type ActivityLeaderboardResponses = {
 
 export type ActivityLeaderboardResponse = ActivityLeaderboardResponses[keyof ActivityLeaderboardResponses];
 
+export type WolpStreamData = {
+    body?: never;
+    path?: never;
+    query: {
+        id: string;
+    };
+    url: '/wolp/stream';
+};
+
+export type WolpStreamErrors = {
+    500: unknown;
+};
+
+export type WolpStreamResponses = {
+    default: unknown;
+};
+
 export type ClientOptions = {
     baseUrl: `${string}://${string}/api/v1` | (string & {});
 };
