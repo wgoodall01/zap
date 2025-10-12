@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import * as tg from "./telegram";
 import { Theme } from "@radix-ui/themes";
 import { routeTree } from "./routeTree.gen";
+import { warmup } from "./api_client";
 import "@radix-ui/themes/styles.css";
 import "./styles.css";
 
@@ -26,6 +27,12 @@ declare module "@tanstack/react-router" {
 
 // Initialize Telegram SDK
 tg.setup();
+
+// Warm up the backend (non-blocking)
+// This triggers the Lambda and wakes up Aurora in the background
+warmup().catch((err) => {
+  console.warn("Warmup request failed:", err);
+});
 
 // Render the app
 const rootElement = document.getElementById("app");
