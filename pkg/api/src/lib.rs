@@ -5,3 +5,4 @@ pub mod http_server;
 pub mod auth;
 pub mod openshock;
 pub mod activity;
+pub mod hdontap;
