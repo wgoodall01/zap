@@ -140,6 +140,48 @@ export type UserActivityWithDetails = {
     totalActions: number;
 };
 
+/**
+ * Response containing check-in history
+ */
+export type GetCheckinsResponse = {
+    /**
+     * List of check-ins, sorted most-recent-first
+     */
+    checkins: Array<CheckIn>;
+};
+
+/**
+ * Represents a single check-in at an LA Fitness location.
+ */
+export type CheckIn = {
+    /**
+     * The check-in date/time in RFC 3339 UTC format
+     */
+    datetime: string;
+    /**
+     * The raw date/time string from the LA Fitness website (e.g., "10/16/2025 18:26 PM PST")
+     */
+    datetime_raw: string;
+    /**
+     * The name of the LA Fitness location
+     */
+    location: string;
+};
+
+/**
+ * Request body for fetching LA Fitness check-ins
+ */
+export type GetCheckinsRequest = {
+    /**
+     * LA Fitness account username
+     */
+    username: string;
+    /**
+     * LA Fitness account password
+     */
+    password: string;
+};
+
 export type WarmupData = {
     body?: never;
     path?: never;
@@ -253,6 +295,23 @@ export type WolpStreamErrors = {
 export type WolpStreamResponses = {
     default: unknown;
 };
+
+export type LafitnessGetCheckinsData = {
+    body: GetCheckinsRequest;
+    path?: never;
+    query?: never;
+    url: '/lafitness/get_checkins';
+};
+
+export type LafitnessGetCheckinsErrors = {
+    default: unknown;
+};
+
+export type LafitnessGetCheckinsResponses = {
+    200: GetCheckinsResponse;
+};
+
+export type LafitnessGetCheckinsResponse = LafitnessGetCheckinsResponses[keyof LafitnessGetCheckinsResponses];
 
 export type ClientOptions = {
     baseUrl: `${string}://${string}/api/v1` | (string & {});

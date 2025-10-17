@@ -7,6 +7,7 @@ pub mod auth;
 pub mod device;
 pub mod trigger;
 pub mod wolp;
+pub mod lafitness;
 
 pub fn get_api_routes() -> Vec<rocket::Route> {
     openapi_get_routes![
@@ -17,6 +18,7 @@ pub fn get_api_routes() -> Vec<rocket::Route> {
         device::get_devices,
         activity::leaderboard,
         wolp::stream,
+        lafitness::get_checkins,
     ]
 }
 

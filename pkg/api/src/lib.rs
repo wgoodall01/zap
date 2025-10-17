@@ -6,3 +6,4 @@ pub mod auth;
 pub mod openshock;
 pub mod activity;
 pub mod hdontap;
+pub mod lafitness;
