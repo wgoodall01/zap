@@ -70,6 +70,23 @@ impl IntoResponse for ApiError {
             None
         };
 
+        // Log the error with full chain using Display formatting
+        // The error chain is built in the same way as the response
+        if let Some(details) = &details {
+            tracing::error!(
+                status_code = %self.code,
+                error = %message,
+                causes = ?details,
+                "request failed with error"
+            );
+        } else {
+            tracing::error!(
+                status_code = %self.code,
+                error = %message,
+                "request failed with error"
+            );
+        }
+
         let body = ErrorResponse {
             error: message,
             details,

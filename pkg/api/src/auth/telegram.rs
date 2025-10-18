@@ -20,6 +20,7 @@ impl FromRequestParts<crate::http_server::AppState> for TgUser
 {
     type Rejection = ApiError;
 
+    #[tracing::instrument(name = "TgUser::from_request_parts", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &crate::http_server::AppState,

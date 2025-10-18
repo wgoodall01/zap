@@ -3,11 +3,15 @@ use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing subscriber for logging
+    // Initialize tracing subscriber for logging with span lifecycle events
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .with_span_events(
+            tracing_subscriber::fmt::format::FmtSpan::NEW
+                | tracing_subscriber::fmt::format::FmtSpan::CLOSE,
         )
         .init();
 

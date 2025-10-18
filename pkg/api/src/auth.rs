@@ -62,6 +62,7 @@ impl User {
     }
 
     /// Gets the appropriate User for this LoginTelegram, if one doesn't exist already.
+    #[tracing::instrument(name = "User::from_telegram", skip(ctx), fields(tg_id = tg_user.user_id))]
     pub async fn from_telegram(tg_user: &telegram::TgUser, ctx: &Context) -> Result<User> {
         // Fast path: get an existing user by finding related LoginTg record.
         let existing_user: Option<User> = sqlx::query_as!(
@@ -136,6 +137,7 @@ impl FromRequestParts<crate::http_server::AppState> for User
 {
     type Rejection = ApiError;
 
+    #[tracing::instrument(name = "User::from_request_parts", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &crate::http_server::AppState,
@@ -177,6 +179,7 @@ impl UserService {
     ///
     /// # Returns
     /// The User if found, or an error if not found or database operation fails.
+    #[tracing::instrument(name = "UserService::get", skip(self, ctx), fields(user_id = %id))]
     pub async fn get(&self, ctx: &Context, id: Uuid) -> Result<User> {
         let user = sqlx::query_as!(
             User,

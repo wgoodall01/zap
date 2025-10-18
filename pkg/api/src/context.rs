@@ -47,6 +47,7 @@ impl Context {
     }
 
     /// Commit the current transaction, if it exists.
+    #[tracing::instrument(name = "Context::commit", skip(self))]
     pub async fn commit(&self) -> Result<(), sqlx::Error> {
         let mut guard = self.txn.lock().await;
         if let Some(txn) = guard.take() {
@@ -57,6 +58,7 @@ impl Context {
     }
 
     /// Create a child context which runs in a single database transaction.
+    #[tracing::instrument(name = "Context::in_txn", skip(self))]
     pub async fn in_txn(&self) -> Result<Context, sqlx::Error> {
         let guard = self.txn.lock().await;
         if guard.is_some() {
@@ -177,6 +179,7 @@ impl FromRequestParts<crate::http_server::AppState> for Context
 {
     type Rejection = ApiError;
 
+    #[tracing::instrument(name = "Context::from_request_parts", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &crate::http_server::AppState,

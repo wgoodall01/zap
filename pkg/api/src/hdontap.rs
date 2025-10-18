@@ -77,6 +77,7 @@ impl HdontapService {
     }
 
     /// Get the M3U8 stream URL for a given stream ID
+    #[tracing::instrument(name = "HdontapService::get_stream_url", skip(self), fields(stream_id = %stream_id))]
     pub async fn get_stream_url(&self, stream_id: &StreamId) -> Result<Url> {
         let html_content = self.fetch_stream_page(stream_id).await?;
         let player_data = self.extract_player_data(&html_content)?;
@@ -85,6 +86,7 @@ impl HdontapService {
     }
 
     /// Fetch the stream page HTML
+    #[tracing::instrument(name = "HdontapService::fetch_stream_page", skip(self), fields(stream_id = %stream_id))]
     async fn fetch_stream_page(&self, stream_id: &StreamId) -> Result<String> {
         let url = format!("https://hdontap.com/stream/{}/", stream_id);
 

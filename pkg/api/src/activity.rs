@@ -84,6 +84,7 @@ impl ActivityService {
     /// - The database operation fails
     /// - JSON serialization of the activity or invoker fails
     /// - The context doesn't contain a valid user
+    #[tracing::instrument(name = "ActivityService::log", skip(self, ctx), fields(activity_type = ?std::mem::discriminant(activity)))]
     pub async fn log(&self, ctx: &Context, activity: &Activity) -> Result<Uuid> {
         let activity_id = Uuid::now_v7();
 
@@ -135,6 +136,7 @@ impl ActivityService {
     /// Returns an error if:
     /// - The database query fails
     /// - JSON deserialization fails for any activity records
+    #[tracing::instrument(name = "ActivityService::count_by_user", skip(self, ctx), fields(reachback_secs = reachback.num_seconds(), top_n))]
     pub async fn count_by_user(
         &self,
         ctx: &Context,

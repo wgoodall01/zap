@@ -260,6 +260,7 @@ impl OpenshockService {
     /// - The HTTP request fails
     /// - The API returns an error status
     /// - The response cannot be parsed as JSON
+    #[tracing::instrument(name = "OpenshockService::list_devices", skip(self, _ctx))]
     pub async fn list_devices(&self, _ctx: &Context) -> Result<Vec<Device>> {
         let url = format!("{}/1/devices", self.base_url);
 
@@ -303,6 +304,7 @@ impl OpenshockService {
     /// - The HTTP request fails
     /// - The API returns an error status
     /// - The response cannot be parsed as JSON
+    #[tracing::instrument(name = "OpenshockService::list_shockers", skip(self, _ctx))]
     pub async fn list_shockers(&self, _ctx: &Context) -> Result<Vec<DeviceWithShockers>> {
         let url = format!("{}/1/shockers/own", self.base_url);
 
@@ -347,6 +349,7 @@ impl OpenshockService {
     /// # Note
     /// This method uses the v1 control endpoint. When available, consider migrating
     /// to the v2 endpoint for improved functionality.
+    #[tracing::instrument(name = "OpenshockService::control", skip(self, _ctx), fields(num_controls = controls.len()))]
     pub async fn control(&self, _ctx: &Context, controls: &[ControlMsg]) -> Result<()> {
         let url = format!("{}/1/shockers/control", self.base_url);
 

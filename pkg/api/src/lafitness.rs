@@ -39,6 +39,7 @@ impl LaFitnessService {
     /// - The HTTP request fails
     /// - Login credentials are invalid
     /// - The login page cannot be parsed
+    #[tracing::instrument(name = "LaFitnessService::login", skip(password), fields(username))]
     pub async fn login(username: String, password: String) -> Result<Self> {
         // Create a client with cookie store to maintain session
         let mut headers = HeaderMap::new();
@@ -148,6 +149,7 @@ impl LaFitnessService {
     /// - The HTTP request fails
     /// - The session is invalid (not logged in)
     /// - The check-in history page cannot be parsed
+    #[tracing::instrument(name = "LaFitnessService::get_checkins", skip(self))]
     pub async fn get_checkins(&self) -> Result<Vec<CheckIn>> {
         let checkin_url = "https://lafitness.com/Pages/checkinhistory.aspx";
 

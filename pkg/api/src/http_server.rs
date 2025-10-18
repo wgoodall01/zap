@@ -1,10 +1,11 @@
 use crate::api;
 use crate::config::Config;
-use axum::extract::State;
-use axum::http::StatusCode;
+use axum::extract::{MatchedPath, State};
+use axum::http::{Request, StatusCode};
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -142,12 +143,54 @@ pub async fn build_server(config: Config) -> anyhow::Result<Router> {
 
     let app_state = AppState { config, db_pool };
 
-    // Build the router
+    // Build the router with custom tracing layer
     let app = Router::new()
         .route("/healthcheck", get(healthcheck))
         .nest("/api/v1", api::create_api_router())
         .merge(SwaggerUi::new("/api/docs").url("/api/v1/openapi.json", ApiDoc::openapi()))
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<_>| {
+                    // Extract the matched path (URL template) from the request
+                    let matched_path = request
+                        .extensions()
+                        .get::<MatchedPath>()
+                        .map(|mp| mp.as_str())
+                        .unwrap_or(request.uri().path());
+
+                    tracing::info_span!(
+                        "request",
+                        method = %request.method(),
+                        name = %matched_path,
+                        status_code = tracing::field::Empty,
+                    )
+                })
+                .on_request(|_request: &Request<_>, _span: &tracing::Span| {
+                    tracing::debug!("started processing request");
+                })
+                .on_response(
+                    |response: &axum::http::Response<_>,
+                     latency: std::time::Duration,
+                     span: &tracing::Span| {
+                        span.record("status_code", response.status().as_u16());
+                        tracing::debug!(
+                            latency_ms = latency.as_millis(),
+                            "finished processing request"
+                        );
+                    },
+                )
+                .on_failure(
+                    |error: ServerErrorsFailureClass,
+                     latency: std::time::Duration,
+                     _span: &tracing::Span| {
+                        tracing::error!(
+                            latency_ms = latency.as_millis(),
+                            error = %error,
+                            "request failed"
+                        );
+                    },
+                ),
+        )
         .with_state(app_state);
 
     Ok(app)
