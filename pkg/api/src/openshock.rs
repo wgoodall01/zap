@@ -1,10 +1,10 @@
 use crate::{config::Config, context::Context};
 use anyhow::{anyhow, Context as _, Result};
 use chrono::{DateTime, Utc};
-use derive_more::{Deref, Display};
+use derive_more::Deref;
 use reqwest::header::{HeaderMap, HeaderValue};
-use rocket_okapi::okapi::schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Base URL for the OpenShock API
@@ -25,12 +25,13 @@ pub struct OpenshockService {
 /// Enforces OpenShock API constraint that duration must be at least 300ms.
 /// Maximum value is implicitly capped at 65535ms (u16::MAX).
 ///
-/// Implements `Deref` to u16 for easy access to the underlying value,
-/// and `Display` for readable string representation.
-#[derive(Debug, Clone, Copy, Serialize, Deref, Display, JsonSchema)]
-pub struct Duration(u16);
+/// Implements `Deref` to u16 for easy access to the underlying value.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Deref, ToSchema)]
+#[repr(transparent)]
+#[serde(try_from = "u16", into = "u16")]
+pub struct ActionDuration(u16);
 
-impl Duration {
+impl ActionDuration {
     /// Creates a new Duration, validating it meets API requirements.
     ///
     /// # Arguments
@@ -42,17 +43,21 @@ impl Duration {
         if ms < 300 {
             return Err(anyhow!("Duration must be at least 300 ms, got {}", ms));
         }
-        Ok(Duration(ms))
+        Ok(ActionDuration(ms))
     }
 }
 
-impl<'de> Deserialize<'de> for Duration {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let ms = u16::deserialize(deserializer)?;
-        Duration::new(ms).map_err(serde::de::Error::custom)
+impl TryFrom<u16> for ActionDuration {
+    type Error = anyhow::Error;
+
+    fn try_from(ms: u16) -> Result<Self> {
+        ActionDuration::new(ms)
+    }
+}
+
+impl From<ActionDuration> for u16 {
+    fn from(duration: ActionDuration) -> u16 {
+        duration.0
     }
 }
 
@@ -61,12 +66,13 @@ impl<'de> Deserialize<'de> for Duration {
 /// Enforces OpenShock API constraint that intensity must be between 0-100 inclusive.
 /// A value of 0 represents no intensity, while 100 represents maximum intensity.
 ///
-/// Implements `Deref` to u8 for easy access to the underlying value,
-/// and `Display` for readable string representation.
-#[derive(Debug, Clone, Copy, Serialize, Deref, Display, JsonSchema)]
-pub struct Intensity(u8);
+/// Implements `Deref` to u8 for easy access to the underlying value.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Deref, ToSchema)]
+#[repr(transparent)]
+#[serde(try_from = "u16", into = "u16")]
+pub struct ActionIntensity(u16);
 
-impl Intensity {
+impl ActionIntensity {
     /// Creates a new Intensity, validating it meets API requirements.
     ///
     /// # Arguments
@@ -74,24 +80,34 @@ impl Intensity {
     ///
     /// # Errors
     /// Returns an error if the intensity is greater than 100.
-    pub fn new(intensity: u8) -> Result<Self> {
+    pub fn new(intensity: u16) -> Result<Self> {
         if intensity > 100 {
             return Err(anyhow!(
                 "Intensity must be between 0 and 100, got {}",
                 intensity
             ));
         }
-        Ok(Intensity(intensity))
+        Ok(ActionIntensity(intensity))
     }
 }
 
-impl<'de> Deserialize<'de> for Intensity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let intensity = u8::deserialize(deserializer)?;
-        Intensity::new(intensity).map_err(serde::de::Error::custom)
+impl TryFrom<u16> for ActionIntensity {
+    type Error = anyhow::Error;
+
+    fn try_from(intensity: u16) -> Result<Self> {
+        ActionIntensity::new(intensity)
+    }
+}
+
+impl From<ActionIntensity> for u16 {
+    fn from(intensity: ActionIntensity) -> u16 {
+        intensity.0
+    }
+}
+
+impl std::fmt::Display for ActionIntensity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -127,9 +143,9 @@ pub struct ControlMsg {
     #[serde(rename = "type")]
     pub control_type: ControlType,
     /// The intensity level for the action (0-100)
-    pub intensity: Intensity,
+    pub intensity: ActionIntensity,
     /// How long the action should last (minimum 300ms)
-    pub duration: Duration,
+    pub duration: ActionDuration,
     /// Whether this action should be exclusive (stop other actions)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclusive: Option<bool>,
@@ -139,7 +155,7 @@ pub struct ControlMsg {
 ///
 /// A device is the main hardware unit that connects to the OpenShock service
 /// and can control one or more shocker units attached to it.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {
     /// Unique identifier for this device
@@ -154,7 +170,7 @@ pub struct Device {
 ///
 /// A shocker is a physical device that can deliver various types of stimulation
 /// (shock, vibration, sound) and is connected to an OpenShock device/hub.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Shocker {
     /// Unique identifier for this shocker
@@ -168,7 +184,6 @@ pub struct Shocker {
     /// Whether this shocker is currently paused (cannot receive commands)
     pub is_paused: bool,
     /// When this shocker was first registered
-    #[schemars(with = "String")]
     pub created_on: DateTime<Utc>,
 }
 
@@ -176,7 +191,7 @@ pub struct Shocker {
 ///
 /// This is the response format when listing devices with their shockers,
 /// providing a complete view of the user's OpenShock setup.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceWithShockers {
     /// Unique identifier for this device
@@ -184,7 +199,6 @@ pub struct DeviceWithShockers {
     /// Human-readable name assigned to this device
     pub name: String,
     /// When this device was first registered with OpenShock
-    #[schemars(with = "String")]
     pub created_on: DateTime<Utc>,
     /// All shockers connected to this device
     pub shockers: Vec<Shocker>,

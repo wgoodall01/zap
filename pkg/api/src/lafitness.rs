@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context as _, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use reqwest::header::{HeaderMap, HeaderValue};
-use schemars::JsonSchema;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Service for interacting with the LA Fitness website.
 ///
@@ -14,7 +14,7 @@ pub struct LaFitnessService {
 }
 
 /// Represents a single check-in at an LA Fitness location.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CheckIn {
     /// The check-in date/time in RFC 3339 UTC format
     pub datetime: String,

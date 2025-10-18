@@ -1,14 +1,14 @@
 use crate::{
     context::Context,
-    openshock::{Duration, Intensity},
+    openshock::{ActionDuration, ActionIntensity},
 };
 use anyhow::{Context as _, Result};
 use chrono::Utc;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::collections::BTreeMap;
 use strum::EnumDiscriminants;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Represents different types of activities that can be logged in the system.
@@ -17,35 +17,35 @@ use uuid::Uuid;
 /// on devices, with the relevant parameters for that action type.
 #[derive(Debug, Clone, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(name(ActivityType))]
-#[strum_discriminants(derive(PartialOrd, Ord, Serialize, Deserialize))]
+#[strum_discriminants(derive(PartialOrd, Ord, Serialize, Deserialize, ToSchema))]
 pub enum Activity {
     /// Electrical shock delivered to device
     Shock {
         /// Intensity level (0-100)
-        intensity: Intensity,
+        intensity: ActionIntensity,
         /// Duration of shock (minimum 300ms)
-        duration: Duration,
+        duration: ActionDuration,
     },
     /// Vibration activated on device
     Vibrate {
         /// Intensity level (0-100)
-        intensity: Intensity,
+        intensity: ActionIntensity,
         /// Duration of vibration (minimum 300ms)
-        duration: Duration,
+        duration: ActionDuration,
     },
     /// Sound/beep played on device
     Beep {
         /// Intensity level (0-100)
-        intensity: Intensity,
+        intensity: ActionIntensity,
         /// Duration of beep (minimum 300ms)
-        duration: Duration,
+        duration: ActionDuration,
     },
     /// Stop command sent to device (no parameters)
     Stop,
 }
 
 /// Activity counts.
-#[derive(Debug, Clone, FromRow, Serialize, JsonSchema)]
+#[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct UserActivityCount {
     pub user_id: Uuid,
     #[sqlx(json)]

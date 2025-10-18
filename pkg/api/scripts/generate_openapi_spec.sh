@@ -12,9 +12,9 @@ trap 'kill $(jobs -p)' EXIT
 echo "--- Building API server"
 cargo build -q
 
-# Run the app in the background as a job
+# Run the app in the background as a job on a non-default port
 echo "--- Starting API server"
-ROCKET_PORT=9000 cargo run --quiet >/dev/null &
+PORT=9000 cargo run --quiet >/dev/null &
 
 # Poll for the JSON file every 50ms until it exists, max 10s
 # `GET localhost:9000/api/v1/openapi.json`

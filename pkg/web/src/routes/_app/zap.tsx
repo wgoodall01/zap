@@ -22,8 +22,8 @@ import {
 import { type TgHaptic, playHapticFeedback } from "../../telegram";
 import { $api } from "../../api";
 import {
-  mutationDevicesTrigger,
-  queryDevicesList,
+  mutationZapTrigger,
+  queryZapDeviceList,
 } from "../../api_client/@tanstack/react-query.gen";
 import type { DeviceWithShockers } from "../../api_client/types.gen";
 
@@ -40,7 +40,7 @@ const EFFECT_DURATION_MS = 600;
 function ZapPage() {
   // Fetch devices on page load
   const { data: devices } = $api.useSuspenseQuery(
-    queryDevicesList,
+    queryZapDeviceList,
     {},
     { staleTime: 5 * 60 * 1000 },
   );
@@ -67,7 +67,7 @@ function ZapPage() {
   }, [firing]);
 
   // Network request to trigger shock
-  const shockMutation = $api.useMutation(mutationDevicesTrigger);
+  const shockMutation = $api.useMutation(mutationZapTrigger);
 
   // Event handler: trigger shock
   const onShock = useCallback(async () => {

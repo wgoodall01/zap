@@ -1,22 +1,25 @@
 use api::{config::Config, http_server};
-use lambda_runtime::Error;
-use lambda_web::launch_rocket_on_lambda;
-use rocket::tokio;
+use lambda_http::{run, Error};
 use serde::Deserialize;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Initialize tracing subscriber for Lambda logging
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .without_time()
+        .init();
+
     // Load config from AWS Secrets Manager
     let config = load_config_from_secrets().await?;
 
-    let rocket = http_server::build_server(config)
+    let app = http_server::build_server(config)
         .await
         .map_err(|e| Error::from(e.to_string()))?;
 
-    // Always use lambda_web since this is the Lambda entrypoint
-    launch_rocket_on_lambda(rocket)
-        .await
-        .map_err(|e| Error::from(e.to_string()))
+    // Run the Axum app on Lambda using lambda_http
+    run(app).await
 }
 
 async fn load_secret(arn: &str) -> Result<serde_json::Value, Error> {

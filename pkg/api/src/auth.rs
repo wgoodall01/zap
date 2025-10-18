@@ -4,40 +4,36 @@
 //! - a FooLogin represents a login method for a user from the Foo service.
 //!     - Each FooLogin is associated with a single User, but a User can have multiple FooLogins.
 
-use crate::config::Config;
 use crate::context::Context;
+use crate::error::ApiError;
 use anyhow::{Context as _, Result};
+use axum::async_trait;
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use chrono::{DateTime, Utc};
-use rocket::request::{FromRequest, Outcome, Request};
-use rocket::State;
-use rocket_okapi::okapi::schemars::JsonSchema;
-
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 mod telegram;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: Uuid,
-    #[schemars(with = "String")]
     pub created_at: DateTime<Utc>,
-    #[schemars(with = "String")]
     pub updated_at: DateTime<Utc>,
 
     pub name: String,
     pub photo_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginTg {
     pub id: Uuid,
-    #[schemars(with = "String")]
     pub created_at: DateTime<Utc>,
-    #[schemars(with = "String")]
     pub updated_at: DateTime<Utc>,
 
     pub user_id: Uuid, // references User
@@ -135,44 +131,31 @@ impl User {
 }
 
 /// Authenticates an incoming request.
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for User {
-    type Error = ();
+#[async_trait]
+impl FromRequestParts<crate::http_server::AppState> for User
+{
+    type Rejection = ApiError;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        // Get the app config from Rocket state.
-        let _config = request
-            .guard::<&State<Config>>()
-            .await
-            .expect("Config not found in Rocket state");
-
-        // Get the database pool from Rocket state
-        let db_pool = request
-            .guard::<&State<sqlx::Pool<sqlx::Postgres>>>()
-            .await
-            .expect("Database pool not found in Rocket state");
-
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &crate::http_server::AppState,
+    ) -> Result<Self, Self::Rejection> {
         // Create a system context for database access
-        let login_ctx = Context::new_system("User::from_request", (**db_pool).clone());
+        let login_ctx = Context::new_system("User::from_request_parts", state.db_pool.clone());
 
         // Try to authenticate using Telegram auth
-        let tg_user = match telegram::TgUser::from_request(request).await {
-            Outcome::Success(user) => user,
-            Outcome::Error(_) | Outcome::Forward(_) => {
-                return Outcome::Error((rocket::http::Status::Unauthorized, ()))
-            }
-        };
+        let tg_user = telegram::TgUser::from_request_parts(parts, state).await?;
 
         // Lookup or create the user in the database
-        let user = match User::from_telegram(&tg_user, &login_ctx).await {
-            Ok(user) => user,
-            Err(e) => {
-                println!("Failed to lookup or create user: {:?}", e);
-                return Outcome::Error((rocket::http::Status::InternalServerError, ()));
-            }
-        };
+        let user = User::from_telegram(&tg_user, &login_ctx)
+            .await
+            .map_err(|e| {
+                ApiError::internal_server_error(
+                    anyhow::anyhow!("Failed to lookup or create user: {}", e)
+                )
+            })?;
 
-        Outcome::Success(user)
+        Ok(user)
     }
 }
 

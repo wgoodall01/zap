@@ -1,12 +1,12 @@
-use crate::config::Config;
+use crate::error::ApiError;
+use axum::async_trait;
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use init_data_rs::validate_third_party;
-use rocket::http::Status;
-use rocket::request::{FromRequest, Outcome, Request};
-use rocket::serde::{Deserialize, Serialize};
-use rocket::State;
-use rocket_okapi::okapi::schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TgUser {
     pub user_id: u64,
@@ -15,55 +15,50 @@ pub struct TgUser {
     pub photo_url: Option<String>,
 }
 
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for TgUser {
-    type Error = ();
+#[async_trait]
+impl FromRequestParts<crate::http_server::AppState> for TgUser
+{
+    type Rejection = ApiError;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        // Get the app config
-        let config = request
-            .guard::<&State<Config>>()
-            .await
-            .expect("Config not found in Rocket state");
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &crate::http_server::AppState,
+    ) -> Result<Self, Self::Rejection> {
+        // Get the app config from state
+        let config = &state.config;
 
-        // Pull out the `Authorization` header.
-        let Some(header) = request.headers().get_one("Authorization") else {
-            println!("Missing Authorization header");
-            return Outcome::Error((Status::Unauthorized, ()));
-        };
+        // Pull out the `Authorization` header
+        let header = parts
+            .headers
+            .get("Authorization")
+            .and_then(|h| h.to_str().ok())
+            .ok_or_else(|| {
+                ApiError::unauthorized(anyhow::anyhow!("Missing Authorization header"))
+            })?;
 
-        // Strip the `Bearer ` prefix.
-        let bearer_token = match header.strip_prefix("Bearer ") {
-            Some(token) => token,
-            None => {
-                println!("Invalid Authorization header format: no 'Bearer' prefix");
-                return Outcome::Error((Status::Unauthorized, ()));
-            }
-        };
+        // Strip the `Bearer ` prefix
+        let bearer_token = header.strip_prefix("Bearer ").ok_or_else(|| {
+            ApiError::unauthorized(anyhow::anyhow!(
+                "Invalid Authorization header format: no 'Bearer' prefix"
+            ))
+        })?;
 
-        // Strip the `tg_init_data:` prefix.
-        let raw_init_data = match bearer_token.strip_prefix("tg_init_data:") {
-            Some(data) => data,
-            None => {
-                println!("Invalid Authorization header format: no 'tg_init_data:' prefix");
-                return Outcome::Error((Status::Unauthorized, ()));
-            }
-        };
+        // Strip the `tg_init_data:` prefix
+        let raw_init_data = bearer_token.strip_prefix("tg_init_data:").ok_or_else(|| {
+            ApiError::unauthorized(anyhow::anyhow!(
+                "Invalid Authorization header format: no 'tg_init_data:' prefix"
+            ))
+        })?;
 
         // Extract the init data
-        let id = match validate_third_party(raw_init_data, config.tg_bot_id, None) {
-            Ok(tgu) => tgu,
-            Err(e) => {
-                println!("Failed to validate Telegram init data: {e}");
-                return Outcome::Error((Status::Unauthorized, ()));
-            }
-        };
+        let id = validate_third_party(raw_init_data, config.tg_bot_id, None).map_err(|e| {
+            ApiError::unauthorized(anyhow::anyhow!("Failed to validate Telegram init data: {}", e))
+        })?;
 
         // Extract the user (must be supplied)
-        let Some(user) = id.user else {
-            println!("User not found in init data");
-            return Outcome::Error((Status::Unauthorized, ()));
-        };
+        let user = id.user.ok_or_else(|| {
+            ApiError::unauthorized(anyhow::anyhow!("User not found in init data"))
+        })?;
 
         // Format the full name
         let name = [Some(user.first_name), user.last_name]
@@ -76,17 +71,18 @@ impl<'r> FromRequest<'r> for TgUser {
 
         // Assert user ID is positive
         // (negative is a group chat, which we don't support as an auth principal)
-        let Some(user_id) = user.id.checked_abs() else {
-            println!("Invalid user ID (negative integer) in init data");
-            return Outcome::Error((Status::Unauthorized, ()));
-        };
+        let user_id = user.id.checked_abs().ok_or_else(|| {
+            ApiError::unauthorized(anyhow::anyhow!(
+                "Invalid user ID (negative integer) in init data"
+            ))
+        })?;
 
         // Build the TgUser
-        return Outcome::Success(TgUser {
+        Ok(TgUser {
             user_id: user_id.try_into().unwrap(),
             name,
             tg_username: user.username.unwrap_or_default(),
             photo_url: user.photo_url,
-        });
+        })
     }
 }

@@ -1,17 +1,16 @@
 use crate::auth;
+use crate::error::ApiError;
+use axum::async_trait;
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use futures::StreamExt;
-use rocket::request::{FromRequest, Outcome, Request};
-use rocket::State;
-use rocket_okapi::okapi::openapi3::{SecurityScheme, SecuritySchemeData};
-use rocket_okapi::okapi::Map;
-use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// An application context caries state about the invoking user, references to resources like a
@@ -173,56 +172,24 @@ impl<'c> sqlx::Executor<'c> for &'c Context {
     }
 }
 
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for Context {
-    type Error = ();
+#[async_trait]
+impl FromRequestParts<crate::http_server::AppState> for Context
+{
+    type Rejection = ApiError;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        // Get the database pool from Rocket state
-        let db_pool = request
-            .guard::<&State<sqlx::Pool<sqlx::Postgres>>>()
-            .await
-            .expect("Database pool not found in Rocket state");
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &crate::http_server::AppState,
+    ) -> Result<Self, Self::Rejection> {
+        // Extract the User from the request
+        let user = auth::User::from_request_parts(parts, state).await?;
 
-        // Extract the User from the request.
-        let user = match request.guard::<auth::User>().await {
-            Outcome::Success(user) => user,
-            Outcome::Error((status, _)) => return Outcome::Error((status, ())),
-            Outcome::Forward(_) => return Outcome::Error((rocket::http::Status::Unauthorized, ())),
-        };
-
-        // Create the user context and return to the request handler.
-        Outcome::Success(Context::new_user(&user, db_pool.inner().clone()))
+        // Create the user context and return to the request handler
+        Ok(Context::new_user(&user, state.db_pool.clone()))
     }
 }
 
-impl<'r> OpenApiFromRequest<'r> for Context {
-    fn from_request_input(
-        _gen: &mut rocket_okapi::r#gen::OpenApiGenerator,
-        _name: String,
-        _required: bool,
-    ) -> rocket_okapi::Result<RequestHeaderInput> {
-        let security_scheme = SecurityScheme {
-            data: SecuritySchemeData::Http {
-                scheme: "bearer".to_owned(),
-                bearer_format: Some("Telegram raw_init_data (with signature)".to_owned()),
-            },
-            description: Some("Telegram MiniApp init-data token".to_owned()),
-            extensions: Map::new(),
-        };
-
-        let mut security_req = Map::new();
-        security_req.insert("bearer".to_owned(), vec![]);
-
-        Ok(RequestHeaderInput::Security(
-            "bearer".to_owned(),
-            security_scheme,
-            security_req,
-        ))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub enum Invoker {
     /// Represents an invocation by request of a user.
     User { id: Uuid },

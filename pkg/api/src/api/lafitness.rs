@@ -1,12 +1,11 @@
+use crate::error::{ApiError, ApiResult};
 use crate::lafitness::{CheckIn, LaFitnessService};
-use rocket::serde::json::Json;
-use rocket::post;
-use rocket_okapi::openapi;
-use schemars::JsonSchema;
+use axum::Json;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Request body for fetching LA Fitness check-ins
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GetCheckinsRequest {
     /// LA Fitness account username
     pub username: String,
@@ -15,17 +14,10 @@ pub struct GetCheckinsRequest {
 }
 
 /// Response containing check-in history
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GetCheckinsResponse {
     /// List of check-ins, sorted most-recent-first
     pub checkins: Vec<CheckIn>,
-}
-
-/// Error response
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ErrorResponse {
-    /// Error message
-    pub error: String,
 }
 
 /// Fetch LA Fitness check-in history
@@ -35,23 +27,30 @@ pub struct ErrorResponse {
 ///
 /// This is an unauthenticated endpoint - the LA Fitness credentials are provided
 /// in the request body.
-#[openapi(tag = "LA Fitness")]
-#[post("/lafitness/get_checkins", data = "<request>")]
+#[utoipa::path(
+    post,
+    path = "/lafitness/get_checkins",
+    tag = "LA Fitness",
+    request_body = GetCheckinsRequest,
+    responses(
+        (status = 200, description = "Check-in history", body = GetCheckinsResponse),
+        (status = 401, description = "Invalid LA Fitness credentials"),
+        (status = 500, description = "Failed to fetch check-ins")
+    )
+)]
 pub async fn get_checkins(
-    request: Json<GetCheckinsRequest>,
-) -> Result<Json<GetCheckinsResponse>, rocket::http::Status> {
+    Json(request): Json<GetCheckinsRequest>,
+) -> ApiResult<Json<GetCheckinsResponse>> {
     // Login to LA Fitness
     let service = LaFitnessService::login(request.username.clone(), request.password.clone())
         .await
         .map_err(|e| {
-            eprintln!("Failed to login to LA Fitness: {}", e);
-            rocket::http::Status::Unauthorized
+            ApiError::unauthorized(anyhow::anyhow!("Failed to login to LA Fitness: {}", e))
         })?;
 
     // Fetch check-ins
     let checkins = service.get_checkins().await.map_err(|e| {
-        eprintln!("Failed to fetch check-ins: {}", e);
-        rocket::http::Status::InternalServerError
+        ApiError::internal_server_error(anyhow::anyhow!("Failed to fetch check-ins: {}", e))
     })?;
 
     Ok(Json(GetCheckinsResponse { checkins }))

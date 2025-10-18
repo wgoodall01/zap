@@ -1,32 +1,34 @@
 use crate::activity::{Activity, ActivityService};
 use crate::config::Config;
 use crate::context::Context;
-use crate::openshock::{ControlMsg, ControlType, Duration, Intensity, OpenshockService};
-use rocket::http::Status;
-use rocket::{post, serde::json::Json, State};
-use rocket_okapi::okapi::schemars::JsonSchema;
-use rocket_okapi::openapi;
+use crate::error::ApiResult;
+use crate::openshock::{
+    ActionDuration, ActionIntensity, ControlMsg, ControlType, OpenshockService,
+};
+use axum::extract::State;
+use axum::Json;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub enum Action {
     Shock {
-        intensity: Intensity,
-        duration: Duration,
+        intensity: ActionIntensity,
+        duration: ActionDuration,
     },
     Beep {
-        intensity: Intensity,
-        duration: Duration,
+        intensity: ActionIntensity,
+        duration: ActionDuration,
     },
     Vibrate {
-        intensity: Intensity,
-        duration: Duration,
+        intensity: ActionIntensity,
+        duration: ActionDuration,
     },
     Stop,
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TriggerRequest {
     /// The UUIDs of the shocker devices to control
@@ -35,21 +37,32 @@ pub struct TriggerRequest {
     pub action: Action,
 }
 
-#[derive(Serialize, JsonSchema)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TriggerResponse {
     pub success: bool,
     pub message: String,
 }
 
-#[openapi(tag = "Devices", operation_id = "devices:trigger")]
-#[post("/trigger", data = "<request>")]
+/// Trigger an action on one or more OpenShock devices
+#[utoipa::path(
+    post,
+    path = "/zap/trigger",
+    tag = "Zap",
+    operation_id = "zap:trigger",
+    request_body = TriggerRequest,
+    responses(
+        (status = 200, description = "Action triggered", body = TriggerResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("bearer" = []))
+)]
 pub async fn trigger_action(
     ctx: Context,
-    config: &State<Config>,
-    request: Json<TriggerRequest>,
-) -> Result<Json<TriggerResponse>, Status> {
-    let openshock_service = OpenshockService::from_config(config);
+    State(config): State<Config>,
+    Json(request): Json<TriggerRequest>,
+) -> ApiResult<Json<TriggerResponse>> {
+    let openshock_service = OpenshockService::from_config(&config);
     let activity_service = ActivityService::new();
 
     // Convert the request action to OpenShock ControlType and Activity
@@ -93,8 +106,8 @@ pub async fn trigger_action(
         Action::Stop => (
             ControlType::Stop,
             Activity::Stop,
-            Intensity::new(10).unwrap(), // Stop doesn't need intensity but OpenShock API requires it
-            Duration::new(300).unwrap(), // Stop doesn't need duration but OpenShock API requires it
+            ActionIntensity::new(10).unwrap(), // Stop doesn't need intensity but OpenShock API requires it
+            ActionDuration::new(300).unwrap(), // Stop doesn't need duration but OpenShock API requires it
         ),
     };
 
@@ -113,7 +126,7 @@ pub async fn trigger_action(
 
     // Send the control command
     if let Err(e) = openshock_service.control(&ctx, &control_msgs).await {
-        eprintln!("Failed to send control command: {}", e);
+        tracing::error!("Failed to send control command: {}", e);
         return Ok(Json(TriggerResponse {
             success: false,
             message: format!("Failed to trigger action: {}", e),
@@ -122,7 +135,7 @@ pub async fn trigger_action(
 
     // Log the activity
     if let Err(e) = activity_service.log(&ctx, &activity).await {
-        eprintln!("Failed to log activity: {}", e);
+        tracing::warn!("Failed to log activity: {}", e);
         // Don't fail the request if logging fails
     }
 
