@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Context as _, Result};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono_tz::America::Los_Angeles;
+use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderValue};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
@@ -16,8 +18,8 @@ pub struct LaFitnessService {
 /// Represents a single check-in at an LA Fitness location.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CheckIn {
-    /// The check-in date/time in RFC 3339 UTC format
-    pub datetime: String,
+    /// The check-in date/time in UTC
+    pub datetime: DateTime<Utc>,
     /// The raw date/time string from the LA Fitness website (e.g., "10/16/2025 18:26 PM PST")
     pub datetime_raw: String,
     /// The name of the LA Fitness location
@@ -218,7 +220,7 @@ impl LaFitnessService {
         Ok(checkins)
     }
 
-    /// Parses a check-in date/time string to RFC 3339 UTC timestamp.
+    /// Parses a check-in date/time string to a UTC DateTime.
     ///
     /// Example input: "10/16/2025 18:26 PM PST"
     ///
@@ -226,38 +228,109 @@ impl LaFitnessService {
     /// * `date_str` - The date/time string from LA Fitness
     ///
     /// # Returns
-    /// RFC 3339 formatted UTC datetime string, or the original string if parsing fails
-    fn parse_checkin_datetime(date_str: &str) -> Result<String> {
+    /// UTC DateTime
+    ///
+    /// # LA Fitness DateTime Format Quirk
+    /// LA Fitness uses a non-standard datetime format where the hour appears to be
+    /// in a modified 12-hour format but with values 13-24 for PM times:
+    /// - "14:10 PM" means 2:10 PM (14 - 12 = 2)
+    /// - "17:27 PM" means 5:27 PM (17 - 12 = 5)
+    /// - AM times appear to use standard format (e.g., "10:00 AM" means 10:00 AM)
+    fn parse_checkin_datetime(date_str: &str) -> Result<DateTime<Utc>> {
         // Format: "10/16/2025 18:26 PM PST"
-        let parts: Vec<&str> = date_str.split_whitespace().collect();
-        if parts.len() < 3 {
-            // If we can't parse it, just return the original string
-            return Ok(date_str.to_string());
-        }
+        let re = Regex::new(r"^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2})\s+(AM|PM)")
+            .context("Failed to create regex")?;
 
-        let date_part = parts[0]; // "10/16/2025"
-        let time_part = parts[1]; // "18:26"
-        let meridiem = parts[2]; // "PM"
+        let captures = re
+            .captures(date_str)
+            .ok_or_else(|| anyhow!("Invalid date format: {}", date_str))?;
 
-        // Parse the datetime string
-        let dt_str = format!("{} {} {}", date_part, time_part, meridiem);
+        let month: u32 = captures[1].parse().context("Invalid month")?;
+        let day: u32 = captures[2].parse().context("Invalid day")?;
+        let year: i32 = captures[3].parse().context("Invalid year")?;
+        let hour: u32 = captures[4].parse().context("Invalid hour")?;
+        let minute: u32 = captures[5].parse().context("Invalid minute")?;
+        // captures[6] is the AM/PM marker, but LA Fitness already uses 24-hour format
 
-        // Try to parse the datetime
-        let parsed = NaiveDateTime::parse_from_str(&dt_str, "%m/%d/%Y %H:%M %p");
+        // Handle LA Fitness's weird format:
+        // - "14:10 PM" means 2:10 PM -> in 24-hour format that's 14:10 (hour stays as-is)
+        // - "17:27 PM" means 5:27 PM -> in 24-hour format that's 17:27 (hour stays as-is)
+        // - "10:00 AM" means 10:00 AM -> in 24-hour format that's 10:00 (hour stays as-is)
+        // The hour value is ALREADY in 24-hour format, so we don't need any conversion!
+        let hour_24 = hour;
 
-        match parsed {
-            Ok(dt) => {
-                // LA Fitness reports times in PST (UTC-8)
-                // Add 8 hours to convert PST to UTC (PST is UTC-8)
-                let pst_offset = chrono::Duration::hours(8);
-                let utc_dt = dt + pst_offset;
-                let datetime_utc: DateTime<Utc> = DateTime::from_naive_utc_and_offset(utc_dt, Utc);
-                Ok(datetime_utc.to_rfc3339())
-            }
-            Err(_) => {
-                // If parsing fails, return the original string
-                Ok(date_str.to_string())
-            }
-        }
+        // Create naive datetime
+        let naive_date = NaiveDate::from_ymd_opt(year, month, day)
+            .ok_or_else(|| anyhow!("Invalid date: {}/{}/{}", year, month, day))?;
+        let naive_datetime = naive_date
+            .and_hms_opt(hour_24, minute, 0)
+            .ok_or_else(|| anyhow!("Invalid time: {}:{}", hour_24, minute))?;
+
+        // LA Fitness reports times in Pacific Time
+        // Use chrono-tz to properly handle DST transitions
+        let datetime_pt = Los_Angeles
+            .from_local_datetime(&naive_datetime)
+            .single()
+            .ok_or_else(|| anyhow!("Ambiguous or invalid local time: {}", naive_datetime))?;
+
+        // Convert to UTC
+        Ok(datetime_pt.with_timezone(&Utc))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use chrono_tz::America::New_York;
+
+    #[test]
+    fn test_parse_checkin_datetime_october_edt() {
+        // Parsed: 10/18/2025 14:10 PM PST
+        // ET: 2025-10-18 5:10p EDT (UTC-4)
+        let parsed_str = "10/18/2025 14:10 PM PST";
+        let parsed = LaFitnessService::parse_checkin_datetime(parsed_str)
+            .expect("Failed to parse datetime");
+
+        // Reference time: 2025-10-18 5:10p EDT
+        let reference_naive = NaiveDate::from_ymd_opt(2025, 10, 18)
+            .unwrap()
+            .and_hms_opt(17, 10, 0) // 5:10 PM in 24-hour format
+            .unwrap();
+        let reference_et = New_York
+            .from_local_datetime(&reference_naive)
+            .single()
+            .unwrap();
+        let reference_utc = reference_et.with_timezone(&Utc);
+
+        assert_eq!(
+            parsed, reference_utc,
+            "Parsed datetime should match reference ET datetime"
+        );
+    }
+
+    #[test]
+    fn test_parse_checkin_datetime_january_est() {
+        // Parsed: 01/01/2026 17:27 PM PST
+        // ET: 2026-01-01 8:27p EST (UTC-5)
+        let parsed_str = "01/01/2026 17:27 PM PST";
+        let parsed = LaFitnessService::parse_checkin_datetime(parsed_str)
+            .expect("Failed to parse datetime");
+
+        // Reference time: 2026-01-01 8:27p EST
+        let reference_naive = NaiveDate::from_ymd_opt(2026, 1, 1)
+            .unwrap()
+            .and_hms_opt(20, 27, 0) // 8:27 PM in 24-hour format
+            .unwrap();
+        let reference_et = New_York
+            .from_local_datetime(&reference_naive)
+            .single()
+            .unwrap();
+        let reference_utc = reference_et.with_timezone(&Utc);
+
+        assert_eq!(
+            parsed, reference_utc,
+            "Parsed datetime should match reference ET datetime"
+        );
     }
 }

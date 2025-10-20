@@ -42,7 +42,7 @@ export type ActionIntensity = number;
  */
 export type CheckIn = {
     /**
-     * The check-in date/time in RFC 3339 UTC format
+     * The check-in date/time in UTC
      */
     datetime: string;
     /**
