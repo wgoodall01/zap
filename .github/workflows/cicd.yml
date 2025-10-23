@@ -55,7 +55,7 @@ jobs:
       - name: Build Cargo tests
         run: "cd pkg/api && cargo test --no-run"
       - name: Run Cargo tests
-        run: "cd pkg/api && cargo test --no-fail-fast -v"
+        run: "cd pkg/api && cargo test --no-fail-fast"
       - name: Run Clippy
         run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Build and test web
