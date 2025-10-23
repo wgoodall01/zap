@@ -52,14 +52,14 @@ jobs:
       - name: Install pnpm dependencies
         run: pnpm install
 
-      - name: Run Clippy
-        run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Run Cargo tests
         run: "cd pkg/api && cargo test"
+      - name: Run Clippy
+        run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Build and test web
         run: "cd pkg/web && pnpm build && pnpm test"
       - name: Build infra and synthesize
-        run: "cd pkg/infra && pnpm build && pnpm synth"
+        run: "cd pkg/infra && pnpm build && pnpm cdk synth"
 
   build:
     runs-on: ubuntu-latest
