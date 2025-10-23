@@ -94,6 +94,8 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: ${{ steps.tool-versions.outputs.pnpm_version }}
+      - name: Install Zig toolchain (for Lambda cross-compilation)
+        uses: mlugg/setup-zig@v1
       - name: Get pnpm store directory
         shell: bash
         run: |
