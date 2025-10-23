@@ -81,8 +81,14 @@ impl HdontapService {
     pub async fn get_stream_url(&self, stream_id: &StreamId) -> Result<Url> {
         let html_content = self.fetch_stream_page(stream_id).await?;
         let player_data = self.extract_player_data(&html_content)?;
-        let m3u8_url = self.get_m3u8_url(&player_data)?;
-        Ok(Url::parse(&m3u8_url)?)
+
+        match player_data {
+            Some(data) => {
+                let m3u8_url = self.get_m3u8_url(&data)?;
+                Ok(Url::parse(&m3u8_url)?)
+            }
+            None => Err(anyhow!("Stream is currently offline")),
+        }
     }
 
     /// Fetch the stream page HTML
@@ -108,21 +114,33 @@ impl HdontapService {
     }
 
     /// Extract JSON from the player-data script tag using HTML parser
-    fn extract_player_data(&self, html_content: &str) -> Result<Value> {
+    /// Returns None if the stream is offline
+    fn extract_player_data(&self, html_content: &str) -> Result<Option<Value>> {
         let document = Html::parse_document(html_content);
         let selector = Selector::parse(r#"script[id="player-data"]"#)
             .map_err(|e| anyhow!("Invalid CSS selector: {}", e))?;
 
-        let script_element = document
-            .select(&selector)
-            .next()
-            .ok_or_else(|| anyhow!("Could not find player-data script tag"))?;
+        // Try to find the player-data script tag
+        if let Some(script_element) = document.select(&selector).next() {
+            let json_content = script_element.inner_html();
+            let player_data: Value = serde_json::from_str(&json_content)
+                .map_err(|e| anyhow!("Error parsing JSON: {}", e))?;
+            return Ok(Some(player_data));
+        }
 
-        let json_content = script_element.inner_html();
-        let player_data: Value = serde_json::from_str(&json_content)
-            .map_err(|e| anyhow!("Error parsing JSON: {}", e))?;
+        // If no player-data tag found, check if stream is offline
+        let stream_player_selector = Selector::parse(".stream-player")
+            .map_err(|e| anyhow!("Invalid CSS selector: {}", e))?;
 
-        Ok(player_data)
+        if let Some(stream_player) = document.select(&stream_player_selector).next() {
+            let html = stream_player.html();
+            if html.contains("Currently Offline") {
+                return Ok(None);
+            }
+        }
+
+        // Neither player-data nor offline indicator found
+        Err(anyhow!("Could not find player-data script tag or offline indicator"))
     }
 
     /// Extract the M3U8 URL from player data
@@ -222,11 +240,13 @@ mod tests {
         assert!(result.is_ok());
 
         let player_data = result.unwrap();
+        assert!(player_data.is_some());
+        let data = player_data.unwrap();
         assert_eq!(
-            player_data["streamSrc"],
+            data["streamSrc"],
             "https://live.hdontap.com/hls/test.m3u8"
         );
-        assert_eq!(player_data["other"], "data");
+        assert_eq!(data["other"], "data");
     }
 
     #[test]
@@ -247,7 +267,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Could not find player-data script tag"));
+            .contains("Could not find player-data script tag or offline indicator"));
     }
 
     #[test]
@@ -321,6 +341,57 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("No streamSrc found in player data"));
+    }
+
+    #[test]
+    fn test_extract_player_data_offline_stream() {
+        let service = HdontapService::new();
+
+        let html = r#"
+            <html>
+            <head><title>Test</title></head>
+            <body>
+                <div class="bg-base-100 stream-player portrait:sticky landscape:relative z-20 portrait:top-[calc(var(--app-header-mobile-height)+var(--stream-page-header-ad-height))]">
+                    <div class="text-2xl">
+                        <div class="text-gray-50">
+                            <div class="bg-black w-full aspect-video flex flex-col justify-center items-center rounded-md">
+                                <img class="w-36 h-16 -mt-12" src="/static/mainsite/hdontap-rgb.4d7aa26da223.svg" alt="HDOnTap Company Logo">
+                                <span class="text-[1.6rem] italic text-white">Currently Offline</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        "#;
+
+        let result = service.extract_player_data(html);
+        assert!(result.is_ok());
+        let player_data = result.unwrap();
+        assert!(player_data.is_none(), "Expected None for offline stream");
+    }
+
+    #[test]
+    fn test_get_stream_url_offline_error() {
+        // Test that when extract_player_data returns None, get_stream_url returns the correct error
+        let service = HdontapService::new();
+
+        let html = r#"
+            <html>
+            <body>
+                <div class="stream-player">
+                    <span>Currently Offline</span>
+                </div>
+            </body>
+            </html>
+        "#;
+
+        let player_data_result = service.extract_player_data(html);
+        assert!(player_data_result.is_ok());
+        assert!(player_data_result.unwrap().is_none());
+
+        // Note: We can't directly test get_stream_url without mocking the HTTP request,
+        // but we can verify the logic path by checking extract_player_data returns None
     }
 
     #[tokio::test]
