@@ -52,8 +52,10 @@ jobs:
       - name: Install pnpm dependencies
         run: pnpm install
 
+      - name: Build Cargo tests
+        run: "cd pkg/api && cargo test --no-run"
       - name: Run Cargo tests
-        run: "cd pkg/api && cargo test"
+        run: "cd pkg/api && cargo test --no-fail-fast -v"
       - name: Run Clippy
         run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Build and test web
