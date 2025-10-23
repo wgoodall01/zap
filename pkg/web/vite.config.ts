@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact(),
-    EnvironmentPlugin(["TG_MOCK_INIT_DATA"]),
+    EnvironmentPlugin({ TG_MOCK_INIT_DATA: null }),
   ],
 
   resolve: {
