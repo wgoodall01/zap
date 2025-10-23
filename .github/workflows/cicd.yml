@@ -30,6 +30,7 @@ jobs:
         with:
           workspaces: "pkg/api -> target"
           shared-key: "zap-v0"
+          save-if: false # The 'build' job will save the cache (w/ aarch64 targets)
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
