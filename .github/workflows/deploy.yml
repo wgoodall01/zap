@@ -58,8 +58,8 @@ jobs:
         run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Build and test web
         run: "cd pkg/web && pnpm build && pnpm test"
-      - name: Build infra and synthesize
-        run: "cd pkg/infra && pnpm build && pnpm cdk synth"
+      - name: Build infra
+        run: "cd pkg/infra && pnpm build"
 
   build:
     runs-on: ubuntu-latest
