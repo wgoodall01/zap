@@ -1,0 +1,60 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual triggering
+
+# Required for OIDC authentication with AWS
+permissions:
+  id-token: write # Required for requesting the JWT
+  contents: read # Required for actions/checkout
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Load AWS account configuration
+        id: aws-config
+        run: |
+          ACCOUNT_ID=$(jq -r '.prod.accountId' pkg/infra/account_ids.json)
+          REGION=$(jq -r '.prod.region' pkg/infra/account_ids.json)
+          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/GithubActionsDeployRole"
+          echo "account_id=${ACCOUNT_ID}" >> $GITHUB_OUTPUT
+          echo "region=${REGION}" >> $GITHUB_OUTPUT
+          echo "role_arn=${ROLE_ARN}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.aws-config.outputs.role_arn }}
+          aws-region: ${{ steps.aws-config.outputs.region }}
+          role-session-name: GitHubActions-Deploy-${{ github.run_id }}
+
+      - name: Verify AWS identity
+        run: |
+          echo "Verifying AWS credentials..."
+          aws sts get-caller-identity
+
+      # Example deployment steps - customize as needed:
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.89.0
+          profile: minimal
+          override: true
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
