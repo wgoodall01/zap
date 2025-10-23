@@ -29,7 +29,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "pkg/api -> target"
-          shared-key: "zap-v0"
           save-if: false # The 'build' job will save the cache (w/ aarch64 targets)
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -86,7 +85,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "pkg/api -> target"
-          shared-key: "zap-v0"
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-lambda
