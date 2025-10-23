@@ -38,7 +38,7 @@ api_lambda:
 	cd pkg/api && ./scripts/build_lambda.sh
 
 .PHONY: pkg/api/target/openapi.json
-pkg/api/target/openapi.json: api
+pkg/api/target/openapi.json:
 	cd pkg/api && ./scripts/generate_openapi_spec.sh
 
 .PHONY: pkg/api/.sqlx
