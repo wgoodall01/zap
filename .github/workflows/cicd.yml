@@ -29,7 +29,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "pkg/api -> target"
-          save-if: false # The 'build' job will save the cache (w/ aarch64 targets)
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
