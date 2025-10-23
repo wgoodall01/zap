@@ -3,6 +3,21 @@
 .PHONY: all
 all: api web api_lambda
 
+.PHONY: fix
+fix:
+	claude --permission-mode acceptEdits \
+		"Run 'make check' and fix any issues found. Running `cd pkg/api && cargo clippy --fix --allow-dirty` may help you. Repeat until it finishes successfully. Once 'make check' passes, your job is done."
+
+.PHONY: fmt
+fmt: 
+	cd pkg/api && cargo fmt
+	cd pkg/web && pnpm fmt
+
+.PHONY: check
+check: fmt
+	cd pkg/api && SQLX_OFFLINE=true cargo clippy -- -D warnings && cargo fmt --check
+	cd pkg/web && pnpm build && pnpm test
+
 .PHONY: gen
 gen: \
 	pkg/api/.sqlx \

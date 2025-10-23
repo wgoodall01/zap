@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use chrono_tz::America::Los_Angeles;
 use regex::Regex;
@@ -65,10 +65,7 @@ impl LaFitnessService {
             .context("Failed to fetch login page")?;
 
         if !response.status().is_success() {
-            return Err(anyhow!(
-                "Failed to fetch login page: {}",
-                response.status()
-            ));
+            return Err(anyhow!("Failed to fetch login page: {}", response.status()));
         }
 
         let html = response.text().await.context("Failed to read login page")?;
@@ -131,10 +128,10 @@ impl LaFitnessService {
                     anyhow!("Failed to parse selector for field {}: {:?}", field_name, e)
                 })?;
 
-            if let Some(element) = document.select(&selector).next() {
-                if let Some(value) = element.value().attr("value") {
-                    form_data.insert(field_name.to_string(), value.to_string());
-                }
+            if let Some(element) = document.select(&selector).next()
+                && let Some(value) = element.value().attr("value")
+            {
+                form_data.insert(field_name.to_string(), value.to_string());
             }
         }
 
@@ -169,7 +166,10 @@ impl LaFitnessService {
             ));
         }
 
-        let html = response.text().await.context("Failed to read check-in page")?;
+        let html = response
+            .text()
+            .await
+            .context("Failed to read check-in page")?;
 
         // Parse and extract check-ins in one scope to avoid Send issues
         let checkins = {
@@ -185,10 +185,10 @@ impl LaFitnessService {
                 .next()
                 .ok_or_else(|| anyhow!("Could not find check-in history table"))?;
 
-            let row_selector =
-                Selector::parse("tr").map_err(|e| anyhow!("Failed to parse row selector: {:?}", e))?;
-            let cell_selector =
-                Selector::parse("td").map_err(|e| anyhow!("Failed to parse cell selector: {:?}", e))?;
+            let row_selector = Selector::parse("tr")
+                .map_err(|e| anyhow!("Failed to parse row selector: {:?}", e))?;
+            let cell_selector = Selector::parse("td")
+                .map_err(|e| anyhow!("Failed to parse cell selector: {:?}", e))?;
 
             let mut checkins = Vec::new();
 
@@ -289,8 +289,8 @@ mod tests {
         // Parsed: 10/18/2025 14:10 PM PST
         // ET: 2025-10-18 5:10p EDT (UTC-4)
         let parsed_str = "10/18/2025 14:10 PM PST";
-        let parsed = LaFitnessService::parse_checkin_datetime(parsed_str)
-            .expect("Failed to parse datetime");
+        let parsed =
+            LaFitnessService::parse_checkin_datetime(parsed_str).expect("Failed to parse datetime");
 
         // Reference time: 2025-10-18 5:10p EDT
         let reference_naive = NaiveDate::from_ymd_opt(2025, 10, 18)
@@ -314,8 +314,8 @@ mod tests {
         // Parsed: 01/01/2026 17:27 PM PST
         // ET: 2026-01-01 8:27p EST (UTC-5)
         let parsed_str = "01/01/2026 17:27 PM PST";
-        let parsed = LaFitnessService::parse_checkin_datetime(parsed_str)
-            .expect("Failed to parse datetime");
+        let parsed =
+            LaFitnessService::parse_checkin_datetime(parsed_str).expect("Failed to parse datetime");
 
         // Reference time: 2026-01-01 8:27p EST
         let reference_naive = NaiveDate::from_ymd_opt(2026, 1, 1)

@@ -49,8 +49,7 @@
 }
 
 .eb-glow-1 {
-  border: var(--eb-border-width) solid
-    oklch(from var(--electric-border-color) l c h / 0.6);
+  border: var(--eb-border-width) solid oklch(from var(--electric-border-color) l c h / 0.6);
   opacity: 0.5;
   filter: blur(calc(0.5px + (var(--eb-border-width) * 0.25)));
 }

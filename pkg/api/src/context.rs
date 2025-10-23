@@ -40,7 +40,7 @@ impl Context {
     /// Create a new Context with the given invoker and database pool.
     pub fn new_user(user: &auth::User, db_pool: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self {
-            invoker: Invoker::from_user(&user),
+            invoker: Invoker::from_user(user),
             db_pool,
             txn: Arc::new(Mutex::new(None)),
         }
@@ -82,7 +82,7 @@ impl Context {
 impl<'c> sqlx::Executor<'c> for &'c Context {
     type Database = Postgres;
 
-    fn fetch_many<'e, 'q: 'e, E: 'q>(
+    fn fetch_many<'e, 'q: 'e, E>(
         self,
         query: E,
     ) -> futures::stream::BoxStream<
@@ -91,7 +91,7 @@ impl<'c> sqlx::Executor<'c> for &'c Context {
     >
     where
         'c: 'e,
-        E: sqlx::Execute<'q, Self::Database>,
+        E: 'q + sqlx::Execute<'q, Self::Database>,
     {
         let txn = self.txn.clone();
         Box::pin(async_stream::stream! {
@@ -113,13 +113,13 @@ impl<'c> sqlx::Executor<'c> for &'c Context {
         })
     }
 
-    fn fetch_optional<'e, 'q: 'e, E: 'q>(
+    fn fetch_optional<'e, 'q: 'e, E>(
         self,
         query: E,
     ) -> Pin<Box<dyn Future<Output = Result<Option<sqlx::postgres::PgRow>, sqlx::Error>> + Send + 'e>>
     where
         'c: 'e,
-        E: sqlx::Execute<'q, Self::Database>,
+        E: 'q + sqlx::Execute<'q, Self::Database>,
     {
         let txn = self.txn.clone();
         let db_pool = self.db_pool.clone();
@@ -175,8 +175,7 @@ impl<'c> sqlx::Executor<'c> for &'c Context {
 }
 
 #[async_trait]
-impl FromRequestParts<crate::http_server::AppState> for Context
-{
+impl FromRequestParts<crate::http_server::AppState> for Context {
     type Rejection = ApiError;
 
     #[tracing::instrument(name = "Context::from_request_parts", skip_all)]

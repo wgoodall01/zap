@@ -43,6 +43,6 @@ if (rootElement && !rootElement.innerHTML) {
       <Theme accentColor="yellow" radius="none" appearance="dark">
         <RouterProvider router={router} />
       </Theme>
-    </StrictMode>,
+    </StrictMode>
   );
 }

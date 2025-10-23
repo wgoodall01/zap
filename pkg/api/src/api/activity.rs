@@ -2,9 +2,9 @@ use crate::activity::ActivityService;
 use crate::auth::{User, UserService};
 use crate::context::Context;
 use crate::error::{ApiError, ApiResult};
-use axum::extract::Query;
 use axum::Json;
-use futures::{stream, StreamExt};
+use axum::extract::Query;
+use futures::{StreamExt, stream};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use utoipa::{IntoParams, ToSchema};
@@ -40,23 +40,23 @@ pub async fn leaderboard(
     Query(params): Query<LeaderboardQuery>,
 ) -> ApiResult<Json<Leaderboard>> {
     // Check that reachback_seconds isn't larger than 7 days
-    if let Some(r) = params.reachback_seconds {
-        if r > 7 * 24 * 60 * 60 {
-            return Err(ApiError::bad_request(anyhow::anyhow!(
-                "reachback_seconds too large: {} (max: 7 days)",
-                r
-            )));
-        }
+    if let Some(r) = params.reachback_seconds
+        && r > 7 * 24 * 60 * 60
+    {
+        return Err(ApiError::bad_request(anyhow::anyhow!(
+            "reachback_seconds too large: {} (max: 7 days)",
+            r
+        )));
     }
 
     // Check that top_n isn't larger than 100
-    if let Some(n) = params.top_n {
-        if n > 100 {
-            return Err(ApiError::bad_request(anyhow::anyhow!(
-                "top_n too large: {} (max: 100)",
-                n
-            )));
-        }
+    if let Some(n) = params.top_n
+        && n > 100
+    {
+        return Err(ApiError::bad_request(anyhow::anyhow!(
+            "top_n too large: {} (max: 100)",
+            n
+        )));
     }
 
     // Get activity counts with user IDs
@@ -70,7 +70,12 @@ pub async fn leaderboard(
             params.top_n.unwrap_or(100),
         )
         .await
-        .map_err(|e| ApiError::internal_server_error(anyhow::anyhow!("Failed to get activity leaderboard: {}", e)))?;
+        .map_err(|e| {
+            ApiError::internal_server_error(anyhow::anyhow!(
+                "Failed to get activity leaderboard: {}",
+                e
+            ))
+        })?;
 
     // Fetch users in parallel with a concurrency limit of 8
     let user_service = UserService::new();

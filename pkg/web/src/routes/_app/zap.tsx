@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Button,
-  Flex,
-  Dialog,
-  Badge,
-  Switch,
-  Text,
-  Card,
-} from "@radix-ui/themes";
+import { Button, Flex, Dialog, Badge, Switch, Text, Card } from "@radix-ui/themes";
 import { Lightning } from "../../components/lightning";
 import { RadialLayout } from "../../components/radial_layout";
 import {
@@ -21,10 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import { type TgHaptic, playHapticFeedback } from "../../telegram";
 import { $api } from "../../api";
-import {
-  mutationZapTrigger,
-  queryZapDeviceList,
-} from "../../api_client/@tanstack/react-query.gen";
+import { mutationZapTrigger, queryZapDeviceList } from "../../api_client/@tanstack/react-query.gen";
 import type { DeviceWithShockers } from "../../api_client/types.gen";
 
 export const Route = createFileRoute("/_app/zap")({
@@ -42,7 +31,7 @@ function ZapPage() {
   const { data: devices } = $api.useSuspenseQuery(
     queryZapDeviceList,
     {},
-    { staleTime: 5 * 60 * 1000 },
+    { staleTime: 5 * 60 * 1000 }
   );
 
   // State to trigger the lightning effect
@@ -55,8 +44,8 @@ function ZapPage() {
       devices
         .flatMap((d) => d.shockers)
         .filter((d) => !d.isPaused)
-        .map((s) => s.id),
-    ),
+        .map((s) => s.id)
+    )
   );
 
   useEffect(() => {
@@ -122,7 +111,7 @@ function ZapPage() {
         },
       });
     },
-    [shockMutation],
+    [shockMutation]
   );
 
   const onBeep = useCallback(() => {
@@ -155,23 +144,14 @@ function ZapPage() {
       />
       <Flex align="center" mx="auto" my="auto">
         {selectedShockers.size > 0 ? (
-          <ButtonCluster
-            onShock={onShock}
-            onVibrate={onVibrate}
-            onSound={onBeep}
-            firing={firing}
-          />
+          <ButtonCluster onShock={onShock} onVibrate={onVibrate} onSound={onBeep} firing={firing} />
         ) : (
           <Card style={{ width: 250, textAlign: "center" }}>
             <Flex direction="column" m="3">
               <Text size="3" mb="4">
                 No shocker channels selected. Open settings and turn one on.
               </Text>
-              <Button
-                variant="soft"
-                size="2"
-                onClick={() => setModalOpen(true)}
-              >
+              <Button variant="soft" size="2" onClick={() => setModalOpen(true)}>
                 <GearIcon />
                 Open Settings
               </Button>
@@ -189,9 +169,7 @@ function ZapPage() {
         <ShockersDialog
           devices={devices}
           enabledShockers={Array.from(selectedShockers)}
-          onChangeEnabled={(shockerIds) =>
-            setSelectedShockers(new Set(shockerIds))
-          }
+          onChangeEnabled={(shockerIds) => setSelectedShockers(new Set(shockerIds))}
           onPair={onPair}
           isOpen={modalOpen}
           onOpenChange={setModalOpen}
@@ -342,11 +320,7 @@ function ShockersDialog({
                         }}
                         disabled={shocker.isPaused}
                       />
-                      <Text
-                        size="2"
-                        weight="medium"
-                        color={shocker.isPaused ? "gray" : undefined}
-                      >
+                      <Text size="2" weight="medium" color={shocker.isPaused ? "gray" : undefined}>
                         {shocker.name}
                       </Text>
                       <Flex ml="auto">
@@ -357,11 +331,7 @@ function ShockersDialog({
                           </Badge>
                         )}
                         {!shocker.isPaused && (
-                          <Button
-                            variant="soft"
-                            size="2"
-                            onClick={() => onPair(shocker.id)}
-                          >
+                          <Button variant="soft" size="2" onClick={() => onPair(shocker.id)}>
                             <PlugsConnected />
                             Connect
                           </Button>

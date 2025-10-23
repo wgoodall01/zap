@@ -58,7 +58,7 @@ pub struct UserActivityCount {
 ///
 /// Provides methods to record activities in the database and retrieve
 /// aggregated statistics about user activity patterns over time.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ActivityService;
 
 impl ActivityService {

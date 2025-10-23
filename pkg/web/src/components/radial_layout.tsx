@@ -50,8 +50,7 @@ const Around: React.FC<AroundProps> = ({ theta, children, orient = false }) => {
     left: "50%",
     "--angle": `${theta}rad`,
     "--radius": `calc(var(--radial-radius) + var(--radial-gap))`,
-    translate:
-      "calc(cos(var(--angle)) * var(--radius)) calc(sin(var(--angle)) * var(--radius))",
+    translate: "calc(cos(var(--angle)) * var(--radius)) calc(sin(var(--angle)) * var(--radius))",
     transform: `translate(-50%, -50%) rotate(${orient ? theta + Math.PI / 2 : 0}rad)`,
   } as React.CSSProperties;
 

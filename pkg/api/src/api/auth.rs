@@ -1,8 +1,8 @@
 use crate::auth::{User, UserService};
 use crate::context::{Context, Invoker};
 use crate::error::{ApiError, ApiResult};
-use axum::extract::Path;
 use axum::Json;
+use axum::extract::Path;
 use uuid::Uuid;
 
 /// Get the current authenticated user's invoker information

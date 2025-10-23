@@ -177,10 +177,7 @@ export const Lightning = ({
 
     // --- One-Time Setup ---
     const vertexShader = compileShader(vertexShaderSource, gl.VERTEX_SHADER);
-    const fragmentShader = compileShader(
-      fragmentShaderSource,
-      gl.FRAGMENT_SHADER,
-    );
+    const fragmentShader = compileShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
     if (!vertexShader || !fragmentShader) return;
 
     const program = createProgram(vertexShader, fragmentShader);
@@ -189,9 +186,7 @@ export const Lightning = ({
     gl.useProgram(program);
 
     // Buffer setup
-    const vertices = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
-    ]);
+    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
     const vertexBuffer = gl.createBuffer();
     bufferRef.current = vertexBuffer;
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -216,11 +211,7 @@ export const Lightning = ({
       canvas.width = canvas.clientWidth;
       canvas.height = canvas.clientHeight;
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(
-        uniformLocationsRef.current.iResolution,
-        canvas.width,
-        canvas.height,
-      );
+      gl.uniform2f(uniformLocationsRef.current.iResolution, canvas.width, canvas.height);
     };
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);

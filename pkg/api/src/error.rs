@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 
@@ -63,7 +63,10 @@ impl IntoResponse for ApiError {
             current_error = source;
         }
 
-        let message = chain.first().cloned().unwrap_or_else(|| "Unknown error".to_string());
+        let message = chain
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "Unknown error".to_string());
         let details = if chain.len() > 1 {
             Some(chain[1..].to_vec())
         } else {
@@ -114,15 +117,9 @@ impl From<sqlx::Error> for ApiError {
 impl From<reqwest::Error> for ApiError {
     fn from(err: reqwest::Error) -> Self {
         if err.is_timeout() || err.is_connect() {
-            Self::new(
-                anyhow::Error::from(err),
-                StatusCode::GATEWAY_TIMEOUT,
-            )
+            Self::new(anyhow::Error::from(err), StatusCode::GATEWAY_TIMEOUT)
         } else if err.is_status() {
-            Self::new(
-                anyhow::Error::from(err),
-                StatusCode::BAD_GATEWAY,
-            )
+            Self::new(anyhow::Error::from(err), StatusCode::BAD_GATEWAY)
         } else {
             Self::internal_server_error(anyhow::Error::from(err))
         }

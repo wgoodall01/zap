@@ -21,9 +21,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     apiClient.interceptors.request.use(async (request) => {
       const auth = await getAuth();
       if (!auth) {
-        throw new Error(
-          "api client intercaptor: no auth state found to authorize request",
-        );
+        throw new Error("api client intercaptor: no auth state found to authorize request");
       }
       request.headers.set("Authorization", `Bearer ${auth.token}`);
       return request;
@@ -37,9 +35,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiContext.Provider value={{ apiClient }}>
-        {children}
-      </ApiContext.Provider>
+      <ApiContext.Provider value={{ apiClient }}>{children}</ApiContext.Provider>
     </QueryClientProvider>
   );
 }
@@ -64,13 +60,13 @@ function useQuery<
   TQueryKey extends rq.QueryKey = rq.QueryKey,
 >(
   queryDef: (
-    options?: Options<TData>,
+    options?: Options<TData>
   ) => rq.UseQueryOptions<TQueryFnData, TError, TQueryFnData, TQueryKey>,
   params?: Omit<Options<TData>, "client">,
   options?: Omit<
     rq.UseQueryOptions<TQueryFnData, TError, TQueryFnData, TQueryKey>,
     "queryFn" | "queryKey"
-  >,
+  >
 ): rq.UseQueryResult<TQueryFnData, TError> {
   const apiClient = useContext(ApiContext);
   if (!apiClient) {
@@ -107,13 +103,13 @@ function useSuspenseQuery<
   TQueryKey extends rq.QueryKey = rq.QueryKey,
 >(
   queryDef: (
-    options?: Options<TData>,
+    options?: Options<TData>
   ) => rq.UseQueryOptions<TQueryFnData, TError, TQueryFnData, TQueryKey>,
   params?: Omit<Options<TData>, "client">,
   options?: Omit<
     rq.UseSuspenseQueryOptions<TQueryFnData, TError, TQueryFnData, TQueryKey>,
     "queryFn" | "queryKey"
-  >,
+  >
 ): rq.UseSuspenseQueryResult<TQueryFnData, TError> {
   const apiClient = useContext(ApiContext);
   if (!apiClient) {
@@ -128,17 +124,17 @@ function useSuspenseQuery<
 
   // Convert UseQueryOptions to UseSuspenseQueryOptions and merge with options.
   const { queryFn, queryKey, ...queryOptions } = opts;
-  
+
   // Handle skipToken case - useSuspenseQuery doesn't support skipToken
   if (queryFn === rq.skipToken) {
     throw new Error("useSuspenseQuery does not support skipToken - use regular useQuery instead");
   }
-  
-  return rq.useSuspenseQuery({ 
-    queryFn: queryFn!, 
-    queryKey, 
-    ...queryOptions, 
-    ...options 
+
+  return rq.useSuspenseQuery({
+    queryFn: queryFn!,
+    queryKey,
+    ...queryOptions,
+    ...options,
   });
 }
 
@@ -166,12 +162,9 @@ function useMutation<
   TContext = unknown,
 >(
   mutationDef: (
-    options?: Partial<Options<TData>>,
+    options?: Partial<Options<TData>>
   ) => rq.UseMutationOptions<TMutationFnData, TError, Options<TData>, TContext>,
-  options?: Omit<
-    rq.UseMutationOptions<TMutationFnData, TError, TVariables, TContext>,
-    "mutationFn"
-  >,
+  options?: Omit<rq.UseMutationOptions<TMutationFnData, TError, TVariables, TContext>, "mutationFn">
 ): rq.UseMutationResult<TMutationFnData, TError, TVariables, TContext> {
   const apiClient = useContext(ApiContext);
   if (!apiClient) {

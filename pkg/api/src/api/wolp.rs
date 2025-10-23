@@ -36,9 +36,12 @@ pub async fn stream(Query(params): Query<StreamQuery>) -> ApiResult<Response> {
         .get_stream_url(&stream_id)
         .await
         .map_err(|e| {
-            ApiError::not_found(anyhow::anyhow!("Stream not found or error retrieving stream: {}", e))
+            ApiError::not_found(anyhow::anyhow!(
+                "Stream not found or error retrieving stream: {}",
+                e
+            ))
         })?;
 
     tracing::info!("Redirecting to stream: {}", m3u8_url);
-    Ok(Redirect::to(&m3u8_url.to_string()).into_response())
+    Ok(Redirect::to(m3u8_url.as_ref()).into_response())
 }

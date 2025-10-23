@@ -5,8 +5,8 @@ use crate::error::ApiResult;
 use crate::openshock::{
     ActionDuration, ActionIntensity, ControlMsg, ControlType, OpenshockService,
 };
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;

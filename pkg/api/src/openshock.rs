@@ -1,5 +1,5 @@
 use crate::{config::Config, context::Context};
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use chrono::{DateTime, Utc};
 use derive_more::Deref;
 use reqwest::header::{HeaderMap, HeaderValue};

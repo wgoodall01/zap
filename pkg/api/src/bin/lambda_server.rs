@@ -1,5 +1,5 @@
 use api::{config::Config, http_server};
-use lambda_http::{run, Error};
+use lambda_http::{Error, run};
 use serde::Deserialize;
 
 #[tokio::main]

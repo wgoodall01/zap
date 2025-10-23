@@ -29,7 +29,10 @@ async fn main() {
                 .await
                 .unwrap_or_else(|_| panic!("Failed to bind to {}", addr));
 
-            tracing::info!("Server listening on http://{}", listener.local_addr().unwrap());
+            tracing::info!(
+                "Server listening on http://{}",
+                listener.local_addr().unwrap()
+            );
 
             match axum::serve(listener, app).await {
                 Ok(_) => tracing::info!("Server shut down gracefully."),

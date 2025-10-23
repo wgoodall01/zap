@@ -34,13 +34,7 @@ export function Profile({ size = "2", ...props }: ProfileComponentProps) {
   // If only ID is provided, we would need to fetch the user data
   // For now, just return a placeholder
   if ("id" in props && props.id) {
-    return (
-      <Avatar
-        size={size}
-        fallback="?"
-        radius="full"
-      />
-    );
+    return <Avatar size={size} fallback="?" radius="full" />;
   }
 
   return null;

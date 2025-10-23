@@ -16,8 +16,7 @@ pub struct TgUser {
 }
 
 #[async_trait]
-impl FromRequestParts<crate::http_server::AppState> for TgUser
-{
+impl FromRequestParts<crate::http_server::AppState> for TgUser {
     type Rejection = ApiError;
 
     #[tracing::instrument(name = "TgUser::from_request_parts", skip_all)]
@@ -53,7 +52,10 @@ impl FromRequestParts<crate::http_server::AppState> for TgUser
 
         // Extract the init data
         let id = validate_third_party(raw_init_data, config.tg_bot_id, None).map_err(|e| {
-            ApiError::unauthorized(anyhow::anyhow!("Failed to validate Telegram init data: {}", e))
+            ApiError::unauthorized(anyhow::anyhow!(
+                "Failed to validate Telegram init data: {}",
+                e
+            ))
         })?;
 
         // Extract the user (must be supplied)

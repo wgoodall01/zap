@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::context::Context;
 use crate::openshock::{DeviceWithShockers, OpenshockService};
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 
 /// List all OpenShock devices and shockers for the authenticated user
 #[utoipa::path(

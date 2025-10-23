@@ -41,9 +41,7 @@ impl axum::extract::FromRef<AppState> for sqlx::Pool<sqlx::Postgres> {
         (status = 503, description = "System is unhealthy", body = HealthcheckResponse)
     )
 )]
-pub async fn healthcheck(
-    State(state): State<AppState>,
-) -> (StatusCode, Json<HealthcheckResponse>) {
+pub async fn healthcheck(State(state): State<AppState>) -> (StatusCode, Json<HealthcheckResponse>) {
     let response = HealthcheckResponse {
         db: sqlx::query_scalar::<_, String>("select now()::varchar")
             .fetch_one(&state.db_pool)

@@ -33,9 +33,7 @@ export function getRawInitData(): string | null {
   if (isMockEnv) {
     const mockInitData = process.env.TG_MOCK_INIT_DATA;
     if (!mockInitData) {
-      throw new Error(
-        "We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.",
-      );
+      throw new Error("We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.");
     }
     return process.env.TG_MOCK_INIT_DATA ?? null;
   }

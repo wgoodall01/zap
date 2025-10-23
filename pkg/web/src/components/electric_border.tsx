@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useCallback } from "react";
 import "./electric_border.css";
 
 // Adapted from:
@@ -73,12 +67,8 @@ export const ElectricBorder = ({
     strokeRef.current.style.filter = `url(#${filterId})`;
 
     // Cache element references to avoid re-querying in other effects
-    dyAnimsRef.current = Array.from(
-      svg.querySelectorAll('feOffset > animate[attributeName="dy"]'),
-    );
-    dxAnimsRef.current = Array.from(
-      svg.querySelectorAll('feOffset > animate[attributeName="dx"]'),
-    );
+    dyAnimsRef.current = Array.from(svg.querySelectorAll('feOffset > animate[attributeName="dy"]'));
+    dxAnimsRef.current = Array.from(svg.querySelectorAll('feOffset > animate[attributeName="dx"]'));
     displacementMapRef.current = svg.querySelector("feDisplacementMap");
 
     // Set static filter attributes once
@@ -134,10 +124,7 @@ export const ElectricBorder = ({
   // Updates displacement map scale when the 'chaos' prop changes.
   useEffect(() => {
     if (displacementMapRef.current) {
-      displacementMapRef.current.setAttribute(
-        "scale",
-        String(30 * (chaos || 1)),
-      );
+      displacementMapRef.current.setAttribute("scale", String(30 * (chaos || 1)));
     }
   }, [chaos]);
 
@@ -223,12 +210,7 @@ export const ElectricBorder = ({
             </feOffset>
             <feComposite in="offsetNoise1" in2="offsetNoise2" result="part1" />
             <feComposite in="offsetNoise3" in2="offsetNoise4" result="part2" />
-            <feBlend
-              in="part1"
-              in2="part2"
-              mode="color-dodge"
-              result="combinedNoise"
-            />
+            <feBlend in="part1" in2="part2" mode="color-dodge" result="combinedNoise" />
             <feDisplacementMap
               in="SourceGraphic"
               in2="combinedNoise"

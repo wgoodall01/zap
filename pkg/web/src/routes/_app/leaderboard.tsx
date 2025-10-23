@@ -1,11 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Flex, Box, Card, Heading, Text, Badge } from "@radix-ui/themes";
-import {
-  Crown,
-  LightningIcon,
-  Vibrate,
-  SpeakerHigh,
-} from "@phosphor-icons/react";
+import { Crown, LightningIcon, Vibrate, SpeakerHigh } from "@phosphor-icons/react";
 import { $api } from "../../api";
 import { queryActivityLeaderboard } from "@/api_client/@tanstack/react-query.gen";
 import { Profile } from "../../components/Profile";
@@ -18,13 +13,7 @@ export const Route = createFileRoute("/_app/leaderboard")({
   }),
 });
 
-function PodiumPosition({
-  leader,
-  position,
-}: {
-  leader: any;
-  position: 1 | 2 | 3;
-}) {
+function PodiumPosition({ leader, position }: { leader: any; position: 1 | 2 | 3 }) {
   const height = [
     120, // Position 1
     80, // Position 2
@@ -38,12 +27,7 @@ function PodiumPosition({
   ][position - 1];
 
   return (
-    <Flex
-      direction="column"
-      align="center"
-      gap="2"
-      style={{ flex: 1, minWidth: 0 }}
-    >
+    <Flex direction="column" align="center" gap="2" style={{ flex: 1, minWidth: 0 }}>
       {/* User info at top */}
 
       <RadialLayout.Container r="20px" gap="10px">
@@ -51,10 +35,7 @@ function PodiumPosition({
           <Box
             style={{
               borderRadius: "100%",
-              border:
-                position === 1
-                  ? "4px solid var(--accent-9)"
-                  : "4px solid transparent",
+              border: position === 1 ? "4px solid var(--accent-9)" : "4px solid transparent",
             }}
           >
             <Profile user={leader.user} size="3" />
@@ -67,12 +48,7 @@ function PodiumPosition({
         )}
       </RadialLayout.Container>
 
-      <Text
-        size="2"
-        weight="medium"
-        truncate
-        style={{ textAlign: "center", maxWidth: "100%" }}
-      >
+      <Text size="2" weight="medium" truncate style={{ textAlign: "center", maxWidth: "100%" }}>
         {leader.user.name}
       </Text>
 
@@ -170,10 +146,7 @@ function LeaderCard({ leader, position }: { leader: any; position: number }) {
 
 function LeaderboardPage() {
   // Get the leaders from the activity leaderboard API
-  const { data: leaderboard } = $api.useSuspenseQuery(
-    queryActivityLeaderboard,
-    {},
-  );
+  const { data: leaderboard } = $api.useSuspenseQuery(queryActivityLeaderboard, {});
 
   return (
     <Flex
@@ -209,11 +182,7 @@ function LeaderboardPage() {
               Full Rankings
             </Text>
             {leaderboard.leaders.map((leader, i) => (
-              <LeaderCard
-                key={leader.user.id}
-                leader={leader}
-                position={i + 1}
-              />
+              <LeaderCard key={leader.user.id} leader={leader} position={i + 1} />
             ))}
           </Flex>
         </Flex>

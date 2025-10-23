@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde_json::Value;
@@ -58,7 +58,9 @@ impl FromStr for StreamId {
         if id_pattern.is_match(s) {
             Ok(Self(s.to_string()))
         } else {
-            Err(anyhow!("Invalid stream ID format: must be numeric or valid HDOnTap URL"))
+            Err(anyhow!(
+                "Invalid stream ID format: must be numeric or valid HDOnTap URL"
+            ))
         }
     }
 }
@@ -70,6 +72,12 @@ impl fmt::Display for StreamId {
 }
 
 pub struct HdontapService;
+
+impl Default for HdontapService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl HdontapService {
     pub fn new() -> Self {
@@ -140,7 +148,9 @@ impl HdontapService {
         }
 
         // Neither player-data nor offline indicator found
-        Err(anyhow!("Could not find player-data script tag or offline indicator"))
+        Err(anyhow!(
+            "Could not find player-data script tag or offline indicator"
+        ))
     }
 
     /// Extract the M3U8 URL from player data
@@ -242,10 +252,7 @@ mod tests {
         let player_data = result.unwrap();
         assert!(player_data.is_some());
         let data = player_data.unwrap();
-        assert_eq!(
-            data["streamSrc"],
-            "https://live.hdontap.com/hls/test.m3u8"
-        );
+        assert_eq!(data["streamSrc"], "https://live.hdontap.com/hls/test.m3u8");
         assert_eq!(data["other"], "data");
     }
 
@@ -264,10 +271,12 @@ mod tests {
 
         let result = service.extract_player_data(html);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Could not find player-data script tag or offline indicator"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Could not find player-data script tag or offline indicator")
+        );
     }
 
     #[test]
@@ -287,10 +296,12 @@ mod tests {
 
         let result = service.extract_player_data(html);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Error parsing JSON"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Error parsing JSON")
+        );
     }
 
     #[test]
@@ -321,10 +332,12 @@ mod tests {
 
         let result = service.get_m3u8_url(&player_data);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No streamSrc found in player data"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No streamSrc found in player data")
+        );
     }
 
     #[test]
@@ -337,10 +350,12 @@ mod tests {
 
         let result = service.get_m3u8_url(&player_data);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No streamSrc found in player data"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No streamSrc found in player data")
+        );
     }
 
     #[test]
@@ -403,12 +418,19 @@ mod tests {
         let stream_id = StreamId::from_u64(259696); // Wolf ambassadors stream
 
         let result = service.get_stream_url(&stream_id).await;
-        assert!(result.is_ok(), "Failed to get stream URL: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to get stream URL: {:?}",
+            result.err()
+        );
 
         let m3u8_url = result.unwrap();
         assert!(m3u8_url.as_str().contains("live.hdontap.com"));
         assert!(m3u8_url.as_str().contains(".m3u8"));
-        assert!(m3u8_url.query().is_some(), "Expected query parameters (t, e)");
+        assert!(
+            m3u8_url.query().is_some(),
+            "Expected query parameters (t, e)"
+        );
 
         println!("✅ Successfully fetched M3U8 URL: {}", m3u8_url);
     }

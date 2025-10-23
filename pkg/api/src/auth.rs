@@ -133,8 +133,7 @@ impl User {
 
 /// Authenticates an incoming request.
 #[async_trait]
-impl FromRequestParts<crate::http_server::AppState> for User
-{
+impl FromRequestParts<crate::http_server::AppState> for User {
     type Rejection = ApiError;
 
     #[tracing::instrument(name = "User::from_request_parts", skip_all)]
@@ -152,9 +151,10 @@ impl FromRequestParts<crate::http_server::AppState> for User
         let user = User::from_telegram(&tg_user, &login_ctx)
             .await
             .map_err(|e| {
-                ApiError::internal_server_error(
-                    anyhow::anyhow!("Failed to lookup or create user: {}", e)
-                )
+                ApiError::internal_server_error(anyhow::anyhow!(
+                    "Failed to lookup or create user: {}",
+                    e
+                ))
             })?;
 
         Ok(user)
@@ -162,7 +162,7 @@ impl FromRequestParts<crate::http_server::AppState> for User
 }
 
 /// Service for user-related operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct UserService;
 
 impl UserService {
