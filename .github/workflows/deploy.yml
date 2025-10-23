@@ -6,17 +6,142 @@ on:
       - main
   workflow_dispatch: # Allow manual triggering
 
-# Required for OIDC authentication with AWS
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for actions/checkout
-
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".tool-versions"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-
+      - name: Install pnpm dependencies
+        run: pnpm install
+
+      - name: Run Clippy
+        run: "cd pkg/api && cargo clippy -- -D warnings"
+      - name: Run Cargo tests
+        run: "cd pkg/api && cargo test"
+      - name: Build and test web
+        run: "cd pkg/web && pnpm build && pnpm test"
+      - name: Build infra and synthesize
+        run: "cd pkg/infra && pnpm build && pnpm synth"
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-lambda
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".tool-versions"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-
+
+      - name: Install pnpm dependencies
+        run: pnpm install
+
+      - name: Build API
+        run: cd pkg/api && cargo build
+      - name: Generate OpenAPI spec
+        run: cd pkg/api && ./scripts/generate_openapi_spec.sh
+
+      - name: Build Lambda
+        run: cd pkg/api && ./scripts/build_lambda.sh
+
+      - name: Generate web API client
+        run: cd pkg/web && pnpm gen
+      - name: Build web
+        run: cd pkg/web && pnpm build
+
+      - name: Upload Lambda artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-bootstrap
+          path: pkg/api/target/lambda/lambda_server/bootstrap
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: pkg/web/dist/
+
+  deploy:
+    needs: [test, build]
+    runs-on: ubuntu-latest
+
+    # Required for OIDC authentication with AWS
+    permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read # Required for actions/checkout
+
+    ################################################################################
+    ##                                                                            ##
+    ##  WARNING                                                                   ##
+    ##                                                                            ##
+    ##  The `deploy` job uses `id-token: write`, which allows it to retrieve      ##
+    ##  temporary Administrator credentials in AWS.                               ##
+    ##                                                                            ##
+    ##  DO NOT run any third-party Actions without hash-pinning their version.    ##
+    ##                                                                            ##
+    ################################################################################
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Lambda artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-bootstrap
+          path: pkg/api/target/lambda/lambda_server/
+
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: pkg/web/dist/
+
+      - name: Make Lambda bootstrap executable
+        run: chmod +x pkg/api/target/lambda/lambda_server/bootstrap
 
       - name: Load AWS account configuration
         id: aws-config
@@ -40,21 +165,20 @@ jobs:
           echo "Verifying AWS credentials..."
           aws sts get-caller-identity
 
-      # Example deployment steps - customize as needed:
-
-      - name: Setup Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.89.0
-          profile: minimal
-          override: true
+          node-version-file: ".tool-versions"
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+        uses: pnpm/action-setup@v4
+
+      - name: Install pnpm dependencies
+        run: pnpm install
+
+      # TODO: Database connectivity from GH Actions???
+      # - name: Deploy database migrations
+      #   run: cd pkg/api && ./scripts/deploy_migrations.sh
+
+      - name: Deploy infrastructure
+        run: cd pkg/infra && pnpm cdk deploy --all --require-approval never

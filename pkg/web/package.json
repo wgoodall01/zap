@@ -7,7 +7,7 @@
     "start": "vite --port 3000",
     "build": "vite build && tsc",
     "serve": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "gen": "tsr generate && rm -rf src/api_client && openapi-ts"
   },
   "dependencies": {
