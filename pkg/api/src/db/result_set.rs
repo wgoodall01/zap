@@ -2,7 +2,6 @@ use crate::db::id::Id;
 use crate::db::sql::Sql;
 use crate::sql;
 use anyhow::{anyhow, bail, Result};
-use serde_json::Value as JsonValue;
 
 /// Trait for filters that can be applied to a result set.
 pub trait Filter {
@@ -62,6 +61,13 @@ impl<T> ResultSet<T> {
         self.limit = Some(limit);
         self
     }
+
+    /// Add a raw SQL predicate to the WHERE clause.
+    /// This is useful for adding predicates that don't correspond to a Filter variant.
+    pub fn where_sql(mut self, predicate: Sql) -> Self {
+        self.predicate.push(predicate);
+        self
+    }
 }
 
 impl<T> ResultSet<T>
@@ -90,32 +96,9 @@ where
 
         let query_str = query.render_pg();
 
-        // Build the sqlx query with binds
-        let mut sqlx_query = sqlx::query_as::<_, T>(&query_str);
-        for bind in query.binds {
-            sqlx_query = match bind {
-                JsonValue::Null => sqlx_query.bind(Option::<String>::None),
-                JsonValue::Bool(b) => sqlx_query.bind(b),
-                JsonValue::Number(n) => {
-                    if let Some(i) = n.as_i64() {
-                        sqlx_query.bind(i)
-                    } else if let Some(f) = n.as_f64() {
-                        sqlx_query.bind(f)
-                    } else {
-                        sqlx_query.bind(n.to_string())
-                    }
-                }
-                JsonValue::String(s) => {
-                    // Try to parse as UUID first, otherwise bind as string
-                    if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
-                        sqlx_query.bind(uuid)
-                    } else {
-                        sqlx_query.bind(s)
-                    }
-                }
-                JsonValue::Array(_) | JsonValue::Object(_) => sqlx_query.bind(bind),
-            };
-        }
+        // Build the sqlx query with binds using the helper method
+        let sqlx_query = sqlx::query_as::<_, T>(&query_str);
+        let sqlx_query = query.bind_to_query_as(sqlx_query);
 
         sqlx_query.fetch_all(conn).await
     }

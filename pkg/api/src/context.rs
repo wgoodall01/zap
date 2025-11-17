@@ -191,7 +191,7 @@ impl FromRequestParts<crate::http_server::AppState> for Context {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub enum Invoker {
     /// Represents an invocation by request of a user.
     User { id: Uuid },

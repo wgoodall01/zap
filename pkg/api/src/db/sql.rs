@@ -49,8 +49,63 @@
 //! Therefore, without `unsafe`, all SQL text originates from compile-time literals,
 //! and all runtime values are safely bound as parameters.
 
+use chrono::{DateTime, Utc};
 use serde_json::Value as JsonValue;
 use std::fmt;
+use uuid::Uuid;
+
+/// A value that can be bound to a SQL query parameter.
+///
+/// This enum preserves type information so that values can be bound
+/// to the correct PostgreSQL types, unlike `serde_json::Value` which
+/// loses type information (e.g., timestamps become strings).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+    Uuid(Uuid),
+    Timestamp(DateTime<Utc>),
+    Json(JsonValue),
+}
+
+impl Value {
+    /// Bind this value to a sqlx Query.
+    pub fn bind_to_query<'q>(
+        &self,
+        query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
+    ) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
+        match self {
+            Value::Null => query.bind(Option::<String>::None),
+            Value::Bool(b) => query.bind(*b),
+            Value::Int(i) => query.bind(*i),
+            Value::Float(f) => query.bind(*f),
+            Value::String(s) => query.bind(s.clone()),
+            Value::Uuid(u) => query.bind(*u),
+            Value::Timestamp(t) => query.bind(*t),
+            Value::Json(j) => query.bind(j.clone()),
+        }
+    }
+
+    /// Bind this value to a sqlx QueryAs.
+    pub fn bind_to_query_as<'q, T>(
+        &self,
+        query: sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments>,
+    ) -> sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments> {
+        match self {
+            Value::Null => query.bind(Option::<String>::None),
+            Value::Bool(b) => query.bind(*b),
+            Value::Int(i) => query.bind(*i),
+            Value::Float(f) => query.bind(*f),
+            Value::String(s) => query.bind(s.clone()),
+            Value::Uuid(u) => query.bind(*u),
+            Value::Timestamp(t) => query.bind(*t),
+            Value::Json(j) => query.bind(j.clone()),
+        }
+    }
+}
 
 /// A SQL query and its bound parameters.
 ///
@@ -70,7 +125,7 @@ use std::fmt;
 pub struct Sql {
     /// SQL fragments, where `query.len() == binds.len() + 1`
     pub query: Vec<String>,
-    pub binds: Vec<JsonValue>,
+    pub binds: Vec<Value>,
 }
 
 impl Default for Sql {
@@ -104,7 +159,7 @@ impl Sql {
     /// # Panics
     ///
     /// Panics if `query.len() != binds.len() + 1`.
-    pub fn new(query: Vec<String>, binds: Vec<JsonValue>) -> Self {
+    pub fn new(query: Vec<String>, binds: Vec<Value>) -> Self {
         let sql = Sql { query, binds };
         sql._check_invariants();
         sql
@@ -236,6 +291,27 @@ impl Sql {
         result
     }
 
+    /// Bind all parameters to a sqlx Query.
+    pub fn bind_to_query<'q>(
+        &self,
+        mut query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
+    ) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
+        for bind in &self.binds {
+            query = bind_value_to_query(query, bind);
+        }
+        query
+    }
+
+    /// Bind all parameters to a sqlx QueryAs.
+    pub fn bind_to_query_as<'q, T>(
+        &self,
+        mut query: sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments>,
+    ) -> sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments> {
+        for bind in &self.binds {
+            query = bind_value_to_query_as(query, bind);
+        }
+        query
+    }
 }
 
 /// Macro for building SQL queries with bound parameters.
@@ -308,11 +384,11 @@ macro_rules! sql {
 
 /// Helper trait to distinguish between Sql objects and values to bind.
 pub trait AppendToSql {
-    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<JsonValue>);
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>);
 }
 
 impl AppendToSql for Sql {
-    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<JsonValue>) {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
         // Merge the last fragment of query with the first fragment of self.query
         if let Some(last) = query.last_mut()
             && let Some(first) = self.query.first()
@@ -325,24 +401,141 @@ impl AppendToSql for Sql {
     }
 }
 
-impl<T: serde::Serialize> AppendToSql for T {
-    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<JsonValue>) {
-        binds.push(serde_json::to_value(self).unwrap());
-        // Start a new query fragment for the next literal
+// Implement AppendToSql for specific types to preserve type information
+impl AppendToSql for Uuid {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Uuid(self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for &Uuid {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Uuid(*self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for DateTime<Utc> {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Timestamp(self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for &DateTime<Utc> {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Timestamp(*self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for &str {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::String(self.to_string()));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for String {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::String(self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for &String {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::String(self.clone()));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for i64 {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Int(self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for &i64 {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Int(*self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for i32 {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Int(self as i64));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for f64 {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Float(self));
+        query.push(String::new());
+    }
+}
+
+impl AppendToSql for bool {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        binds.push(Value::Bool(self));
+        query.push(String::new());
+    }
+}
+
+// For Invoker - serialize as JSON
+impl AppendToSql for &crate::context::Invoker {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        let json = serde_json::to_value(self).unwrap();
+        binds.push(Value::Json(json));
+        query.push(String::new());
+    }
+}
+
+// For Option<&Invoker> - handle NULL correctly
+impl AppendToSql for &Option<crate::context::Invoker> {
+    fn append_to(self, query: &mut Vec<String>, binds: &mut Vec<Value>) {
+        match self {
+            Some(invoker) => {
+                let json = serde_json::to_value(invoker).unwrap();
+                binds.push(Value::Json(json));
+            }
+            None => {
+                binds.push(Value::Null);
+            }
+        }
         query.push(String::new());
     }
 }
 
 /// Helper function to append a value to SQL (either another Sql or a bind value).
 #[doc(hidden)]
-pub fn append_value<T: AppendToSql>(query: &mut Vec<String>, binds: &mut Vec<JsonValue>, value: T) {
+pub fn append_value<T: AppendToSql>(query: &mut Vec<String>, binds: &mut Vec<Value>, value: T) {
     value.append_to(query, binds);
+}
+
+/// Helper function to bind a single Value to a sqlx Query.
+fn bind_value_to_query<'q>(
+    query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
+    bind: &Value,
+) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
+    bind.bind_to_query(query)
+}
+
+/// Helper function to bind a single Value to a sqlx QueryAs.
+fn bind_value_to_query_as<'q, T>(
+    query: sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments>,
+    bind: &Value,
+) -> sqlx::query::QueryAs<'q, sqlx::Postgres, T, sqlx::postgres::PgArguments> {
+    bind.bind_to_query_as(query)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
     fn test_invariants() {
@@ -400,7 +593,7 @@ mod tests {
         let result = sql!("SELECT * FROM users WHERE name = " name);
         assert_eq!(format!("{}", result), "SELECT * FROM users WHERE name = ?");
         assert_eq!(result.render_pg(), "SELECT * FROM users WHERE name = $1");
-        assert_eq!(result.binds, vec![json!("Alice")]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string())]);
     }
 
     #[test]
@@ -412,7 +605,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -426,7 +619,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -437,7 +630,7 @@ mod tests {
 
         let result = Sql::join_with(" AND ", predicates);
         assert_eq!(format!("{}", result), "name = ? AND age = ?");
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -453,7 +646,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age > ?;"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -469,7 +662,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM foos WHERE name = ? AND created_at > ?;"
         );
-        assert_eq!(result.binds, vec![json!("Bob"), json!("2024-01-01")]);
+        assert_eq!(result.binds, vec![Value::String("Bob".to_string()), Value::String("2024-01-01".to_string())]);
     }
 
     #[test]
@@ -481,7 +674,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND data LIKE '$1%'"
         );
-        assert_eq!(result.binds, vec![json!("test")]);
+        assert_eq!(result.binds, vec![Value::String("test".to_string())]);
     }
 
     #[test]
@@ -498,7 +691,7 @@ mod tests {
 
         let result = Sql::join_with(" AND ", predicates);
         assert_eq!(format!("{}", result), "name = ?");
-        assert_eq!(result.binds, vec![json!("Alice")]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string())]);
     }
 
     #[test]
@@ -516,7 +709,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30), json!("NYC")]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
     }
 
     #[test]
@@ -524,7 +717,7 @@ mod tests {
         let id = 42;
         let result = sql!("SELECT * FROM users WHERE id = " id ";");
         assert_eq!(format!("{}", result), "SELECT * FROM users WHERE id = ?;");
-        assert_eq!(result.binds, vec![json!(42)]);
+        assert_eq!(result.binds, vec![Value::Int(42)]);
     }
 
     #[test]
@@ -534,11 +727,11 @@ mod tests {
                 "SELECT * FROM users WHERE id = ".to_string(),
                 "".to_string(),
             ],
-            vec![json!(42)],
+            vec![Value::Int(42)],
         );
         assert_eq!(format!("{}", result), "SELECT * FROM users WHERE id = ?");
         assert_eq!(result.render_pg(), "SELECT * FROM users WHERE id = $1");
-        assert_eq!(result.binds, vec![json!(42)]);
+        assert_eq!(result.binds, vec![Value::Int(42)]);
     }
 
     #[test]
@@ -561,7 +754,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -573,12 +766,12 @@ mod tests {
         // Concat with empty on right
         let result1 = sql_part.concat(&empty);
         assert_eq!(format!("{}", result1), "name = ?");
-        assert_eq!(result1.binds, vec![json!("Alice")]);
+        assert_eq!(result1.binds, vec![Value::String("Alice".to_string())]);
 
         // Concat with empty on left
         let result2 = empty.concat(&sql_part);
         assert_eq!(format!("{}", result2), "name = ?");
-        assert_eq!(result2.binds, vec![json!("Alice")]);
+        assert_eq!(result2.binds, vec![Value::String("Alice".to_string())]);
     }
 
     #[test]
@@ -597,7 +790,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30), json!("NYC")]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
     }
 
     #[test]
@@ -616,7 +809,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30), json!("NYC")]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
     }
 
     #[test]
@@ -678,7 +871,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE active = ? ORDER BY name"
         );
-        assert_eq!(result.binds, vec![json!(true)]);
+        assert_eq!(result.binds, vec![Value::Bool(true)]);
     }
 
     #[test]
@@ -694,7 +887,7 @@ mod tests {
 
         // The malicious string is safely bound as a parameter
         assert_eq!(format!("{}", query), "SELECT * FROM users WHERE name = ?");
-        assert_eq!(query.binds, vec![json!("'; DROP TABLE users; --")]);
+        assert_eq!(query.binds, vec![Value::String("'; DROP TABLE users; --".to_string())]);
     }
 
     #[test]
@@ -712,7 +905,7 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![json!("Alice"), json!(30)]);
+        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
     }
 
     #[test]
@@ -731,7 +924,7 @@ mod tests {
         let result = sql!("select " one ", " ("bind1") ", " yes ";");
         assert_eq!(format!("{}", result), "select ?, bind1, ?;");
         assert_eq!(result.render_pg(), "select $1, bind1, $2;");
-        assert_eq!(result.binds, vec![json!(1), json!(true)]);
+        assert_eq!(result.binds, vec![Value::Int(1), Value::Bool(true)]);
     }
 
 }

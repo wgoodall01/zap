@@ -7,12 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a monorepo for "zap", a Telegram Mini-App client for OpenShock. The project has three main packages:
 
 - **`pkg/api/`** - Rust backend API using Rocket framework with PostgreSQL/SQLx
-- **`pkg/web/`** - React frontend using Vite, TypeScript, and Tanstack Router  
+- **`pkg/web/`** - React frontend using Vite, TypeScript, and Tanstack Router
 - **`pkg/infra/`** - AWS CDK infrastructure code in TypeScript
 
 ## Development Commands
 
 ### Building and Running
+
 - `make all` - Build all components (api, web, and lambda)
 - `make api` - Build the Rust API (`cargo build` in pkg/api)
 - `make web` - Build the web frontend (`pnpm build` in pkg/web)
@@ -20,21 +21,26 @@ This is a monorepo for "zap", a Telegram Mini-App client for OpenShock. The proj
 - `make gen` - Generate SQLx offline data and OpenAPI spec
 
 ### Frontend (pkg/web)
+
 - `pnpm dev` - Start development server on port 3000
 - `pnpm build` - Build for production (runs `vite build && tsc`)
 - `pnpm test` - Run tests with Vitest
 
 ### Backend (pkg/api)
+
 - `cargo build` - Build the API server
 - `cargo sqlx prepare` - Generate SQLx offline query data
 - Uses custom build profile `lambda` for AWS deployment optimizations
+- When you want to run one-off code---don't run `rustc` or a one-off `.rs` file. Instead, just create a test, and run only that test with `cargo test pkg::path::to::test_name`.
 
 ### Infrastructure (pkg/infra)
+
 - `pnpm cdk` - Run AWS CDK commands
 - `pnpm build` - Compile TypeScript
 - `pnpm test` - Run Jest tests
 
 ### Deployment
+
 - `make deploy` - Full deployment (builds lambda + web, deploys migrations, then CDK)
 
 ## Key Architecture Notes
