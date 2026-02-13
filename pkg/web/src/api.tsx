@@ -177,11 +177,14 @@ function useMutation<
   } as Partial<Options<TData>>);
 
   // Create a wrapper mutation function that accepts user variables and passes them through
-  const wrappedMutationFn = (variables: TVariables) => {
-    return mutationOptions.mutationFn!({
-      client: apiClient.apiClient,
-      ...variables,
-    } as Options<TData>);
+  const wrappedMutationFn = (variables: TVariables, context: rq.MutationFunctionContext) => {
+    return mutationOptions.mutationFn!(
+      {
+        client: apiClient.apiClient,
+        ...variables,
+      } as Options<TData>,
+      context
+    );
   };
 
   return rq.useMutation({

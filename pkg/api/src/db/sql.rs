@@ -605,7 +605,10 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -619,7 +622,10 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -630,7 +636,10 @@ mod tests {
 
         let result = Sql::join_with(" AND ", predicates);
         assert_eq!(format!("{}", result), "name = ? AND age = ?");
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -646,7 +655,10 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age > ?;"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -662,7 +674,13 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM foos WHERE name = ? AND created_at > ?;"
         );
-        assert_eq!(result.binds, vec![Value::String("Bob".to_string()), Value::String("2024-01-01".to_string())]);
+        assert_eq!(
+            result.binds,
+            vec![
+                Value::String("Bob".to_string()),
+                Value::String("2024-01-01".to_string())
+            ]
+        );
     }
 
     #[test]
@@ -709,7 +727,14 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
+        assert_eq!(
+            result.binds,
+            vec![
+                Value::String("Alice".to_string()),
+                Value::Int(30),
+                Value::String("NYC".to_string())
+            ]
+        );
     }
 
     #[test]
@@ -754,7 +779,10 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -790,7 +818,14 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
+        assert_eq!(
+            result.binds,
+            vec![
+                Value::String("Alice".to_string()),
+                Value::Int(30),
+                Value::String("NYC".to_string())
+            ]
+        );
     }
 
     #[test]
@@ -809,7 +844,14 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ? AND city = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30), Value::String("NYC".to_string())]);
+        assert_eq!(
+            result.binds,
+            vec![
+                Value::String("Alice".to_string()),
+                Value::Int(30),
+                Value::String("NYC".to_string())
+            ]
+        );
     }
 
     #[test]
@@ -887,7 +929,10 @@ mod tests {
 
         // The malicious string is safely bound as a parameter
         assert_eq!(format!("{}", query), "SELECT * FROM users WHERE name = ?");
-        assert_eq!(query.binds, vec![Value::String("'; DROP TABLE users; --".to_string())]);
+        assert_eq!(
+            query.binds,
+            vec![Value::String("'; DROP TABLE users; --".to_string())]
+        );
     }
 
     #[test]
@@ -905,7 +950,10 @@ mod tests {
             format!("{}", result),
             "SELECT * FROM users WHERE name = ? AND age = ?"
         );
-        assert_eq!(result.binds, vec![Value::String("Alice".to_string()), Value::Int(30)]);
+        assert_eq!(
+            result.binds,
+            vec![Value::String("Alice".to_string()), Value::Int(30)]
+        );
     }
 
     #[test]
@@ -926,5 +974,4 @@ mod tests {
         assert_eq!(result.render_pg(), "select $1, bind1, $2;");
         assert_eq!(result.binds, vec![Value::Int(1), Value::Bool(true)]);
     }
-
 }

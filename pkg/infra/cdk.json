@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/zap.ts",
+  "app": "bun run bin/zap.ts",
   "watch": {
     "include": [
       "**"

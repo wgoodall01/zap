@@ -54,14 +54,15 @@ impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for RepoMeta {
         let deleted_at: Option<DateTime<Utc>> = row.try_get("deleted_at")?;
 
         // Handle deleted_by: if the column is NULL, get None; otherwise deserialize the JSON
-        let deleted_by: Option<Invoker> = row.try_get::<Option<serde_json::Value>, _>("deleted_by")?
+        let deleted_by: Option<Invoker> = row
+            .try_get::<Option<serde_json::Value>, _>("deleted_by")?
             .map(|v| serde_json::from_value(v).map_err(|e| sqlx::Error::Decode(Box::new(e))))
             .transpose()?;
 
-        let created_by = serde_json::from_value(created_by)
-            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
-        let updated_by = serde_json::from_value(updated_by)
-            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let created_by =
+            serde_json::from_value(created_by).map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let updated_by =
+            serde_json::from_value(updated_by).map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
         Ok(RepoMeta {
             created_at,
@@ -374,11 +375,7 @@ where
     /// The implementation will set:
     /// - `deleted_at`: Current timestamp
     /// - `deleted_by`: Invoker from context (stored as JSONB)
-    fn delete(
-        &self,
-        id: Self::Id,
-        ctx: &Context,
-    ) -> impl Future<Output = Result<bool>> + Send
+    fn delete(&self, id: Self::Id, ctx: &Context) -> impl Future<Output = Result<bool>> + Send
     where
         Self: Sync;
 
@@ -400,11 +397,7 @@ where
     /// Permanently delete a single record by ID.
     ///
     /// Returns true if a record was deleted, false if not found.
-    fn hard_delete(
-        &self,
-        id: Self::Id,
-        ctx: &Context,
-    ) -> impl Future<Output = Result<bool>> + Send
+    fn hard_delete(&self, id: Self::Id, ctx: &Context) -> impl Future<Output = Result<bool>> + Send
     where
         Self: Sync;
 
@@ -434,8 +427,7 @@ impl ReadRepo<Foo> for FooRepo {
 
     fn list(&self) -> ResultSet<Foo> {
         // Automatically filter out soft-deleted records
-        ResultSet::new(unsafe { Sql::raw("foo") })
-            .where_sql(sql!("deleted_at IS NULL"))
+        ResultSet::new(unsafe { Sql::raw("foo") }).where_sql(sql!("deleted_at IS NULL"))
     }
 }
 
@@ -543,7 +535,8 @@ impl UpdateRepo<Foo> for FooRepo {
 
         // Add filter predicates
         if !filters.is_empty() {
-            let filter_predicates: Vec<Sql> = filters.into_iter().map(|f| f.as_predicate()).collect();
+            let filter_predicates: Vec<Sql> =
+                filters.into_iter().map(|f| f.as_predicate()).collect();
             let where_clause = Sql::join_with(" AND ", filter_predicates);
             query = query.concat(&sql!(" AND " where_clause));
         }
@@ -583,7 +576,8 @@ impl DeleteRepo<Foo> for FooRepo {
 
         // Add filter predicates
         if !filters.is_empty() {
-            let filter_predicates: Vec<Sql> = filters.into_iter().map(|f| f.as_predicate()).collect();
+            let filter_predicates: Vec<Sql> =
+                filters.into_iter().map(|f| f.as_predicate()).collect();
             let where_clause = Sql::join_with(" AND ", filter_predicates);
             query = query.concat(&sql!(" AND " where_clause));
         }
@@ -614,7 +608,8 @@ impl DeleteRepo<Foo> for FooRepo {
 
         // Add filter predicates
         if !filters.is_empty() {
-            let filter_predicates: Vec<Sql> = filters.into_iter().map(|f| f.as_predicate()).collect();
+            let filter_predicates: Vec<Sql> =
+                filters.into_iter().map(|f| f.as_predicate()).collect();
             let where_clause = Sql::join_with(" AND ", filter_predicates);
             query = query.concat(&sql!(" AND " where_clause));
         }
@@ -700,13 +695,28 @@ mod tests {
 
         // Create three test records
         FooRepo::new()
-            .create(FooCreate { name: "Alice".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "Alice".to_string(),
+                },
+                &ctx,
+            )
             .await?;
         FooRepo::new()
-            .create(FooCreate { name: "Bob".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "Bob".to_string(),
+                },
+                &ctx,
+            )
             .await?;
         FooRepo::new()
-            .create(FooCreate { name: "Charlie".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "Charlie".to_string(),
+                },
+                &ctx,
+            )
             .await?;
 
         // Fetch all records
@@ -733,7 +743,12 @@ mod tests {
 
         // Create a record
         let foo = FooRepo::new()
-            .create(FooCreate { name: "Original".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "Original".to_string(),
+                },
+                &ctx,
+            )
             .await?;
 
         // Update the record
@@ -763,7 +778,12 @@ mod tests {
 
         // Create a record
         let foo = FooRepo::new()
-            .create(FooCreate { name: "Test".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "Test".to_string(),
+                },
+                &ctx,
+            )
             .await?;
 
         // Update with empty changes should return the same record
@@ -784,15 +804,38 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create several records
-        FooRepo::new().create(FooCreate { name: "Foo1".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Foo2".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Bar1".to_string() }, &ctx).await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Foo1".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Foo2".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Bar1".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
 
         // Update all Foo* names
         let count = FooRepo::new()
             .update_many(
                 vec![FooFilter::NameIgnoreCase("foo%".to_string())],
-                FooUpdate { name: Some("Updated".to_string()) },
+                FooUpdate {
+                    name: Some("Updated".to_string()),
+                },
                 &ctx,
             )
             .await?;
@@ -813,7 +856,12 @@ mod tests {
 
         // Create a record
         let foo = FooRepo::new()
-            .create(FooCreate { name: "ToDelete".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "ToDelete".to_string(),
+                },
+                &ctx,
+            )
             .await?;
 
         // Soft delete it
@@ -825,12 +873,11 @@ mod tests {
         assert_eq!(results.len(), 0);
 
         // Verify it still exists in the database (just soft-deleted)
-        let raw_result: Option<(bool,)> = sqlx::query_as(
-            "SELECT deleted_at IS NOT NULL FROM foo WHERE id = $1"
-        )
-        .bind(foo.id.as_uuid())
-        .fetch_optional(&ctx)
-        .await?;
+        let raw_result: Option<(bool,)> =
+            sqlx::query_as("SELECT deleted_at IS NOT NULL FROM foo WHERE id = $1")
+                .bind(foo.id.as_uuid())
+                .fetch_optional(&ctx)
+                .await?;
         assert!(raw_result.is_some());
         assert!(raw_result.unwrap().0); // deleted_at IS NOT NULL
 
@@ -845,9 +892,30 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create several records
-        FooRepo::new().create(FooCreate { name: "Alice".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Bob".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Charlie".to_string() }, &ctx).await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Alice".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Bob".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Charlie".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
 
         // Soft delete by name
         let count = FooRepo::new()
@@ -871,7 +939,12 @@ mod tests {
 
         // Create a record
         let foo = FooRepo::new()
-            .create(FooCreate { name: "ToHardDelete".to_string() }, &ctx)
+            .create(
+                FooCreate {
+                    name: "ToHardDelete".to_string(),
+                },
+                &ctx,
+            )
             .await?;
 
         // Hard delete it
@@ -879,12 +952,10 @@ mod tests {
         assert!(deleted);
 
         // Verify it's completely gone from the database
-        let raw_result: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM foo WHERE id = $1"
-        )
-        .bind(foo.id.as_uuid())
-        .fetch_one(&ctx)
-        .await?;
+        let raw_result: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM foo WHERE id = $1")
+            .bind(foo.id.as_uuid())
+            .fetch_one(&ctx)
+            .await?;
         assert_eq!(raw_result.0, 0);
 
         Ok(())
@@ -898,9 +969,30 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create several records
-        FooRepo::new().create(FooCreate { name: "Alice".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Bob".to_string() }, &ctx).await?;
-        let charlie = FooRepo::new().create(FooCreate { name: "Charlie".to_string() }, &ctx).await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Alice".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Bob".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        let charlie = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Charlie".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
 
         // First soft delete one
         FooRepo::new().delete(charlie.id, &ctx).await?;
@@ -928,9 +1020,30 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create test records
-        let alice = FooRepo::new().create(FooCreate { name: "Alice".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Bob".to_string() }, &ctx).await?;
-        FooRepo::new().create(FooCreate { name: "Charlie".to_string() }, &ctx).await?;
+        let alice = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Alice".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Bob".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Charlie".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
 
         // Test: Filter by exact name
         let results = FooRepo::new()
@@ -970,16 +1083,27 @@ mod tests {
 
         // Before soft delete - deleted_by should be omitted (skip_serializing_if)
         let json = serde_json::to_value(&meta).unwrap();
-        println!("Before soft delete: {}", serde_json::to_string_pretty(&json).unwrap());
-        assert!(json.get("deleted_by").is_none(), "deleted_by should be omitted when None");
+        println!(
+            "Before soft delete: {}",
+            serde_json::to_string_pretty(&json).unwrap()
+        );
+        assert!(
+            json.get("deleted_by").is_none(),
+            "deleted_by should be omitted when None"
+        );
 
         // After soft delete - deleted_by should serialize as the Invoker object directly
         meta.soft_delete(&invoker);
         let json = serde_json::to_value(&meta).unwrap();
-        println!("After soft delete: {}", serde_json::to_string_pretty(&json).unwrap());
+        println!(
+            "After soft delete: {}",
+            serde_json::to_string_pretty(&json).unwrap()
+        );
 
         // Check that deleted_by is present and has the correct Invoker structure
-        let deleted_by = json.get("deleted_by").expect("deleted_by should be present");
+        let deleted_by = json
+            .get("deleted_by")
+            .expect("deleted_by should be present");
         assert!(!deleted_by.is_null());
         // Invoker::System serializes as { "System": { "tag": "test" } }
         assert_eq!(deleted_by["System"]["tag"], "test");
@@ -993,16 +1117,37 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create and soft delete a record
-        let foo = FooRepo::new().create(FooCreate { name: "ToDelete".to_string() }, &ctx).await?;
+        let foo = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "ToDelete".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
         FooRepo::new().delete(foo.id, &ctx).await?;
 
         // Try to update the deleted record - should fail to find it
         let result = FooRepo::new()
-            .update(foo.id, FooUpdate { name: Some("Updated".to_string()) }, &ctx)
+            .update(
+                foo.id,
+                FooUpdate {
+                    name: Some("Updated".to_string()),
+                },
+                &ctx,
+            )
             .await;
 
-        assert!(result.is_err(), "Should not be able to update a deleted record");
-        assert!(result.unwrap_err().to_string().contains("Failed to update Foo"));
+        assert!(
+            result.is_err(),
+            "Should not be able to update a deleted record"
+        );
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to update Foo")
+        );
 
         Ok(())
     }
@@ -1015,16 +1160,32 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create two records, soft delete one
-        FooRepo::new().create(FooCreate { name: "Alice".to_string() }, &ctx).await?;
-        let bob = FooRepo::new().create(FooCreate { name: "Bob".to_string() }, &ctx).await?;
+        FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Alice".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
+        let bob = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "Bob".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
         FooRepo::new().delete(bob.id, &ctx).await?;
 
         // Update all records with name "Bob" - should affect 0 records (Bob is deleted)
         let count = FooRepo::new()
             .update_many(
                 vec![FooFilter::Name("Bob".to_string())],
-                FooUpdate { name: Some("Updated".to_string()) },
-                &ctx
+                FooUpdate {
+                    name: Some("Updated".to_string()),
+                },
+                &ctx,
             )
             .await?;
 
@@ -1041,13 +1202,23 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create and soft delete a record
-        let foo = FooRepo::new().create(FooCreate { name: "ToDelete".to_string() }, &ctx).await?;
+        let foo = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "ToDelete".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
         let first_delete = FooRepo::new().delete(foo.id, &ctx).await?;
         assert!(first_delete, "First delete should succeed");
 
         // Try to soft delete again - should return false (0 rows affected)
         let second_delete = FooRepo::new().delete(foo.id, &ctx).await?;
-        assert!(!second_delete, "Second delete should return false (already deleted)");
+        assert!(
+            !second_delete,
+            "Second delete should return false (already deleted)"
+        );
 
         Ok(())
     }
@@ -1060,22 +1231,33 @@ mod tests {
         let ctx = test_context_with_temp_table(pool).await?;
 
         // Create and soft delete a record
-        let foo = FooRepo::new().create(FooCreate { name: "ToDelete".to_string() }, &ctx).await?;
+        let foo = FooRepo::new()
+            .create(
+                FooCreate {
+                    name: "ToDelete".to_string(),
+                },
+                &ctx,
+            )
+            .await?;
         FooRepo::new().delete(foo.id, &ctx).await?;
 
         // Hard delete SHOULD work on soft-deleted records
         let hard_deleted = FooRepo::new().hard_delete(foo.id, &ctx).await?;
-        assert!(hard_deleted, "Hard delete should permanently remove soft-deleted records");
+        assert!(
+            hard_deleted,
+            "Hard delete should permanently remove soft-deleted records"
+        );
 
         // Verify the record is completely gone from database
-        let raw_result: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM foo WHERE id = $1"
-        )
-        .bind(foo.id.as_uuid())
-        .fetch_one(&ctx)
-        .await?;
+        let raw_result: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM foo WHERE id = $1")
+            .bind(foo.id.as_uuid())
+            .fetch_one(&ctx)
+            .await?;
 
-        assert_eq!(raw_result.0, 0, "Soft-deleted record should be completely removed");
+        assert_eq!(
+            raw_result.0, 0,
+            "Soft-deleted record should be completely removed"
+        );
 
         Ok(())
     }
@@ -1102,11 +1284,8 @@ mod tests {
         let pool = sqlx::PgPool::connect(&database_url).await?;
 
         // Raw query that returns NULL for a JSONB column - this works fine
-        let result: Result<(Option<serde_json::Value>,), sqlx::Error> = sqlx::query_as(
-            "SELECT NULL::jsonb"
-        )
-        .fetch_one(&pool)
-        .await;
+        let result: Result<(Option<serde_json::Value>,), sqlx::Error> =
+            sqlx::query_as("SELECT NULL::jsonb").fetch_one(&pool).await;
 
         println!("Direct Option<serde_json::Value>: {:?}", result);
         assert!(result.is_ok());

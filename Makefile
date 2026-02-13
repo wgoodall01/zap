@@ -11,12 +11,12 @@ fix:
 .PHONY: fmt
 fmt: 
 	cd pkg/api && cargo fmt
-	cd pkg/web && pnpm fmt
+	cd pkg/web && bun run fmt
 
 .PHONY: check
 check: fmt
 	cd pkg/api && SQLX_OFFLINE=true cargo clippy -- -D warnings && cargo fmt --check
-	cd pkg/web && pnpm build && pnpm test
+	cd pkg/web && bun run build && bun run test
 
 .PHONY: gen
 gen: \
@@ -27,7 +27,7 @@ gen: \
 .PHONY: deploy
 deploy: api_lambda web
 	cd pkg/api && ./scripts/deploy_migrations.sh
-	cd pkg/infra && pnpm cdk deploy
+	cd pkg/infra && bun run cdk deploy
 
 .PHONY: api
 api:
@@ -47,8 +47,8 @@ pkg/api/.sqlx:
 
 .PHONY: web
 web: pkg/web/src/api_client
-	cd pkg/web && pnpm build
+	cd pkg/web && bun run build
 
 .PHONY: pkg/web/src/api_client
 pkg/web/src/api_client: pkg/api/target/openapi.json
-	cd pkg/web && pnpm gen
+	cd pkg/web && bun run gen

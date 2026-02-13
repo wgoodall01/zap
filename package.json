@@ -1,0 +1,5 @@
+{
+  "name": "zap",
+  "private": true,
+  "workspaces": ["pkg/infra", "pkg/web"]
+}

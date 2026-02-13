@@ -16,15 +16,15 @@ This is a monorepo for "zap", a Telegram Mini-App client for OpenShock. The proj
 
 - `make all` - Build all components (api, web, and lambda)
 - `make api` - Build the Rust API (`cargo build` in pkg/api)
-- `make web` - Build the web frontend (`pnpm build` in pkg/web)
+- `make web` - Build the web frontend (`bun run build` in pkg/web)
 - `make api_lambda` - Build API for AWS Lambda deployment
 - `make gen` - Generate SQLx offline data and OpenAPI spec
 
 ### Frontend (pkg/web)
 
-- `pnpm dev` - Start development server on port 3000
-- `pnpm build` - Build for production (runs `vite build && tsc`)
-- `pnpm test` - Run tests with Vitest
+- `bun run dev` - Start development server on port 3000
+- `bun run build` - Build for production (runs `vite build && tsc`)
+- `bun run test` - Run tests with Vitest
 
 ### Backend (pkg/api)
 
@@ -35,9 +35,9 @@ This is a monorepo for "zap", a Telegram Mini-App client for OpenShock. The proj
 
 ### Infrastructure (pkg/infra)
 
-- `pnpm cdk` - Run AWS CDK commands
-- `pnpm build` - Compile TypeScript
-- `pnpm test` - Run Jest tests
+- `bun run cdk` - Run AWS CDK commands
+- `bun run build` - Compile TypeScript
+- `bun run test` - Run Jest tests
 
 ### Deployment
 
@@ -57,4 +57,4 @@ This is a monorepo for "zap", a Telegram Mini-App client for OpenShock. The proj
 - **Backend**: Rocket 0.5, SQLx 0.8, AWS Lambda runtime, reqwest
 - **Infrastructure**: AWS CDK 2.x, TypeScript
 
-The project uses pnpm workspaces and has specific build optimizations for AWS Lambda deployment.
+The project uses Bun workspaces and has specific build optimizations for AWS Lambda deployment.

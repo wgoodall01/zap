@@ -112,7 +112,6 @@ mod tests {
         assert_eq!(foo_id.as_uuid(), uuid);
     }
 
-
     #[test]
     fn test_id_generate() {
         let id1 = TestFooId::generate();

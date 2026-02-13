@@ -1,7 +1,7 @@
 use crate::db::id::Id;
 use crate::db::sql::Sql;
 use crate::sql;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 
 /// Trait for filters that can be applied to a result set.
 pub trait Filter {
@@ -146,5 +146,4 @@ where
             .await?
             .ok_or_else(|| anyhow!("No results found"))
     }
-
 }

@@ -16,12 +16,8 @@ jobs:
       - name: Load tool versions
         id: tool-versions
         run: |
-          NODEJS_VERSION=$(grep '^nodejs' .tool-versions | awk '{print $2}')
-          PNPM_VERSION=$(grep '^pnpm' .tool-versions | awk '{print $2}')
-          AWSCLI_VERSION=$(grep '^awscli' .tool-versions | awk '{print $2}')
-          echo "nodejs_version=${NODEJS_VERSION}" >> $GITHUB_OUTPUT
-          echo "pnpm_version=${PNPM_VERSION}" >> $GITHUB_OUTPUT
-          echo "awscli_version=${AWSCLI_VERSION}" >> $GITHUB_OUTPUT
+          BUN_VERSION=$(grep '^bun' .tool-versions | awk '{print $2}')
+          echo "bun_version=${BUN_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Install Rust toolchain
         run: rustup show
@@ -29,27 +25,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "pkg/api -> target"
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ steps.tool-versions.outputs.nodejs_version }}
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ steps.tool-versions.outputs.pnpm_version }}
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-
-      - name: Install pnpm dependencies
-        run: pnpm install
+          bun-version: ${{ steps.tool-versions.outputs.bun_version }}
+      - name: Install dependencies
+        run: bun install
 
       - name: Build Cargo tests
         run: "cd pkg/api && cargo test --no-run"
@@ -58,9 +39,9 @@ jobs:
       - name: Run Clippy
         run: "cd pkg/api && cargo clippy -- -D warnings"
       - name: Build and test web
-        run: "cd pkg/web && pnpm build && pnpm test"
+        run: "cd pkg/web && bun run build && bun run test"
       - name: Build infra
-        run: "cd pkg/infra && pnpm build"
+        run: "cd pkg/infra && bun run build"
 
   build:
     runs-on: ubuntu-latest
@@ -71,12 +52,8 @@ jobs:
       - name: Load tool versions
         id: tool-versions
         run: |
-          NODEJS_VERSION=$(grep '^nodejs' .tool-versions | awk '{print $2}')
-          PNPM_VERSION=$(grep '^pnpm' .tool-versions | awk '{print $2}')
-          AWSCLI_VERSION=$(grep '^awscli' .tool-versions | awk '{print $2}')
-          echo "nodejs_version=${NODEJS_VERSION}" >> $GITHUB_OUTPUT
-          echo "pnpm_version=${PNPM_VERSION}" >> $GITHUB_OUTPUT
-          echo "awscli_version=${AWSCLI_VERSION}" >> $GITHUB_OUTPUT
+          BUN_VERSION=$(grep '^bun' .tool-versions | awk '{print $2}')
+          echo "bun_version=${BUN_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Install Rust toolchain
         run: rustup show
@@ -87,30 +64,15 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-lambda
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ steps.tool-versions.outputs.nodejs_version }}
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ steps.tool-versions.outputs.pnpm_version }}
+          bun-version: ${{ steps.tool-versions.outputs.bun_version }}
       - name: Install Zig toolchain (for Lambda cross-compilation)
         uses: mlugg/setup-zig@v2
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-
 
-      - name: Install pnpm dependencies
-        run: pnpm install
+      - name: Install dependencies
+        run: bun install
 
       - name: Build API
         run: cd pkg/api && cargo build
@@ -121,9 +83,9 @@ jobs:
         run: cd pkg/api && ./scripts/build_lambda.sh
 
       - name: Generate web API client
-        run: cd pkg/web && pnpm gen
+        run: cd pkg/web && bun run gen
       - name: Build web
-        run: cd pkg/web && pnpm build
+        run: cd pkg/web && bun run build
 
       - name: Upload Lambda artifact
         uses: actions/upload-artifact@v4
@@ -164,12 +126,8 @@ jobs:
       - name: Load tool versions
         id: tool-versions
         run: |
-          NODEJS_VERSION=$(grep '^nodejs' .tool-versions | awk '{print $2}')
-          PNPM_VERSION=$(grep '^pnpm' .tool-versions | awk '{print $2}')
-          AWSCLI_VERSION=$(grep '^awscli' .tool-versions | awk '{print $2}')
-          echo "nodejs_version=${NODEJS_VERSION}" >> $GITHUB_OUTPUT
-          echo "pnpm_version=${PNPM_VERSION}" >> $GITHUB_OUTPUT
-          echo "awscli_version=${AWSCLI_VERSION}" >> $GITHUB_OUTPUT
+          BUN_VERSION=$(grep '^bun' .tool-versions | awk '{print $2}')
+          echo "bun_version=${BUN_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Download Lambda artifact
         uses: actions/download-artifact@v4
@@ -208,22 +166,17 @@ jobs:
           echo "Verifying AWS credentials..."
           aws sts get-caller-identity
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ steps.tool-versions.outputs.nodejs_version }}
+          bun-version: ${{ steps.tool-versions.outputs.bun_version }}
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ steps.tool-versions.outputs.pnpm_version }}
-
-      - name: Install pnpm dependencies
-        run: pnpm install
+      - name: Install dependencies
+        run: bun install
 
       # TODO: Database connectivity from GH Actions???
       # - name: Deploy database migrations
       #   run: cd pkg/api && ./scripts/deploy_migrations.sh
 
       - name: Deploy infrastructure
-        run: cd pkg/infra && pnpm cdk deploy --all --require-approval never
+        run: cd pkg/infra && bun run cdk deploy --all --require-approval never
