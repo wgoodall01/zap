@@ -45,6 +45,12 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+
+    # Required for OIDC authentication with AWS (to fetch secrets for web build)
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,6 +87,28 @@ jobs:
 
       - name: Build Lambda
         run: cd pkg/api && ./scripts/build_lambda.sh
+
+      - name: Load AWS account configuration
+        id: aws-config
+        run: |
+          ACCOUNT_ID=$(jq -r '.prod.accountId' pkg/infra/account_ids.json)
+          REGION=$(jq -r '.prod.region' pkg/infra/account_ids.json)
+          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/GithubActionsDeployRole"
+          echo "account_id=${ACCOUNT_ID}" >> $GITHUB_OUTPUT
+          echo "region=${REGION}" >> $GITHUB_OUTPUT
+          echo "role_arn=${ROLE_ARN}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.aws-config.outputs.role_arn }}
+          aws-region: ${{ steps.aws-config.outputs.region }}
+          role-session-name: GitHubActions-Build-${{ github.run_id }}
+
+      - name: Fetch env from AWS Secrets Manager
+        run: |
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id api_keys --query SecretString --output text)
+          echo "$SECRET_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
 
       - name: Generate web API client
         run: cd pkg/web && bun run gen
