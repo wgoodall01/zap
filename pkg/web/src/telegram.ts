@@ -8,37 +8,21 @@ import {
 } from "@telegram-apps/sdk";
 import { isTMA } from "@telegram-apps/bridge";
 
-// Check whether we're running in a mock environment (i.e. a non-Telegram-hosted browser context)
-const isMockEnv = process.env.NODE_ENV === "development" && !isTMA();
-
 export function setup() {
-  // In mock env, don't initialize Telegram SDK
-  if (isMockEnv) {
+  // Only initialize when running inside Telegram
+  if (!isTMA()) {
     return;
   }
 
-  // Initialize Telegram SDK
   telegramInit();
-
-  // Mount components
   initData.restore();
 }
 
 /**
- * Get the raw init data.
- *
- * If we're running in the mock environment, returns the mock init data.
+ * Get the raw init data from the Telegram Mini-App environment.
+ * Returns null if not running in a mini-app.
  */
 export function getRawInitData(): string | null {
-  if (isMockEnv) {
-    const mockInitData = process.env.TG_MOCK_INIT_DATA;
-    if (!mockInitData) {
-      throw new Error("We're running in a mock environment, but TG_MOCK_INIT_DATA is not set.");
-    }
-    return process.env.TG_MOCK_INIT_DATA ?? null;
-  }
-
-  // If we're running outside of a mini-app, we don't have init data.
   if (!isTMA()) {
     return null;
   }
@@ -56,8 +40,7 @@ export type TgHaptic =
  * If we can't, this is a no-op.
  */
 export function playHapticFeedback(h: TgHaptic) {
-  if (isMockEnv) {
-    console.log("tg mock: haptic feedback:", h);
+  if (!isTMA()) {
     return;
   }
 

@@ -2,7 +2,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { Box, Flex, Button, Card, Text, Spinner } from "@radix-ui/themes";
 import { useEffect, Suspense } from "react";
 import { Link } from "../link";
-import { LightningIcon, RankingIcon } from "@phosphor-icons/react";
+import { LightningIcon, RankingIcon, User as UserIcon } from "@phosphor-icons/react";
 import { checkAuthBeforeLoad } from "../auth";
 import { ApiProvider } from "../api";
 import * as tg from "../telegram";
@@ -75,6 +75,10 @@ function AppBar() {
           <NavButton to="/leaderboard">
             <RankingIcon />
             leaders
+          </NavButton>
+          <NavButton to="/me">
+            <UserIcon />
+            me
           </NavButton>
         </Flex>
       </Card>

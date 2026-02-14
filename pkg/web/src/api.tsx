@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createClient, type Client } from "./api_client/client";
 import * as rq from "@tanstack/react-query";
-import { getAuth } from "./auth";
+import { getAuth, removeCredentials } from "./auth";
 import type { Options } from "./api_client/sdk.gen";
 import type { TDataShape } from "./api_client/client/types.gen";
 
@@ -25,6 +25,16 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       }
       request.headers.set("Authorization", `Bearer ${auth.token}`);
       return request;
+    });
+
+    // On 401 responses, sign out and redirect to /login.
+    apiClient.interceptors.response.use((response) => {
+      if (response.status === 401) {
+        removeCredentials();
+        const redirect = location.pathname + location.search + location.hash;
+        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
+      }
+      return response;
     });
 
     // Create the TanStack QueryClient (responsible for storing cached results).

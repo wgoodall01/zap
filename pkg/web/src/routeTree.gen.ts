@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppZapRouteImport } from './routes/_app/zap'
+import { Route as AppMeRouteImport } from './routes/_app/me'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 
 const LoginRoute = LoginRouteImport.update({
@@ -34,6 +35,11 @@ const AppZapRoute = AppZapRouteImport.update({
   path: '/zap',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMeRoute = AppMeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
@@ -44,12 +50,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/me': typeof AppMeRoute
   '/zap': typeof AppZapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/me': typeof AppMeRoute
   '/zap': typeof AppZapRoute
 }
 export interface FileRoutesById {
@@ -58,14 +66,22 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
+  '/_app/me': typeof AppMeRoute
   '/_app/zap': typeof AppZapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/leaderboard' | '/zap'
+  fullPaths: '/' | '/login' | '/leaderboard' | '/me' | '/zap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/leaderboard' | '/zap'
-  id: '__root__' | '/' | '/_app' | '/login' | '/_app/leaderboard' | '/_app/zap'
+  to: '/' | '/login' | '/leaderboard' | '/me' | '/zap'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/_app/leaderboard'
+    | '/_app/me'
+    | '/_app/zap'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppZapRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/me': {
+      id: '/_app/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof AppMeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/leaderboard': {
       id: '/_app/leaderboard'
       path: '/leaderboard'
@@ -116,11 +139,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppLeaderboardRoute: typeof AppLeaderboardRoute
+  AppMeRoute: typeof AppMeRoute
   AppZapRoute: typeof AppZapRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppLeaderboardRoute: AppLeaderboardRoute,
+  AppMeRoute: AppMeRoute,
   AppZapRoute: AppZapRoute,
 }
 

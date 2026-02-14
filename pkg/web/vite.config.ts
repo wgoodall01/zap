@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact(),
-    EnvironmentPlugin({ TG_MOCK_INIT_DATA: null }),
+    EnvironmentPlugin({ TG_BOT_USERNAME: null }),
   ],
 
   resolve: {
@@ -19,7 +19,7 @@ export default defineConfig({
   },
 
   server: {
-    allowedHosts: ["localhost", "dynamic-evolved-magpie.ngrok-free.app"],
+    allowedHosts: ["localhost", "zap.localhost", "dynamic-evolved-magpie.ngrok-free.app"],
     proxy: {
       "/api": {
         target: "http://localhost:8000",
